@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Конструктор карточек для печати</title>
+<script src="https://cdn.jsdelivr.net/npm/woff2-encoder@0.0.2/dist/woff2.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'Segoe UI', Tahoma, sans-serif; background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 100%); color: #1e293b; min-height: 100vh; padding: 15px 15px 60px; -webkit-print-color-adjust: exact; print-color-adjust: exact; overflow-x: hidden; background-attachment: fixed; }
+  .app-header { max-width: 1600px; margin: 0 auto 20px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 16px; padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; box-shadow: 0 8px 25px rgba(0,0,0,0.2), inset 0 -2px 0 rgba(0,0,0,0.05); position: relative; z-index: 100; }
+  .app-header h1 { font-size: 18px; color: #4c1d95; margin-right: auto; text-shadow: 0 1px 1px rgba(255,255,255,0.8); }
+  .btn { border: none; padding: 10px 18px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px; color: #fff; white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,0.15), inset 0 -2px 0 rgba(0,0,0,0.1); user-select: none; }
+  .btn:hover { filter: brightness(1.1); }
+  .btn:active { transform: translateY(2px); box-shadow: 0 1px 3px rgba(0,0,0,0.15), inset 0 1px 0 rgba(0,0,0,0.1); }
+  .btn-save { background: #10b981; } .btn-load { background: #f59e0b; position: relative; overflow: hidden; }
+  .btn-load input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .btn-pdf { background: #6366f1; } .btn-preview { background: #8b5cf6; } .btn-html { background: #ec4899; }
+  .btn-toggle { background: #64748b; }
+  .btn-toggle.active { background: #0ea5e9; box-shadow: inset 0 3px 6px rgba(0,0,0,0.2); transform: translateY(1px); }
+  .btn-undo { background: #f59e0b; }
+  .btn-apply-all { background: #0ea5e9; width: 100%; margin-top: 10px; justify-content: center; padding: 12px; border-radius: 10px; }
+  .workspace { max-width: 1600px; margin: 0 auto; display: flex; justify-content: flex-start; transition: padding 0.3s ease; position: relative; }
+  .workspace.panel-left-open { padding-left: 460px; }
+  .workspace.panel-right-open { padding-right: 380px; }
+  .workspace.panel-both-open { padding-left: 460px; padding-right: 380px; }
+  .center-preview { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 20px; transition: all 0.3s ease; width: 100%; }
+  .preview-stage { background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px); padding: 30px; border-radius: 24px; display: flex; align-items: center; justify-content: center; min-height: 450px; width: 100%; max-width: 520px; box-shadow: inset 0 4px 15px rgba(0,0,0,0.1), 0 10px 30px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.3); }
+  .preview-card { width: 100%; max-width: 380px; height: 506px; flex-shrink: 0; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; position: relative; box-shadow: 0 15px 35px rgba(0,0,0,0.25), 0 5px 15px rgba(0,0,0,0.1); background: #fff; transition: box-shadow 0.2s, aspect-ratio 0.3s; }
+  .preview-card.landscape { max-width: 506px; height: 380px; }
+  .preview-card.warn-state { box-shadow: 0 0 0 3px #ef4444, 0 15px 35px rgba(0,0,0,0.25); }
+  .preview-info { font-size: 14px; color: #fff; margin-top: 20px; text-align: center; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+  .preview-warn { font-size: 13px; color: #fca5a5; font-weight: 700; margin-top: 6px; text-align: center; min-height: 18px; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+  .btn-autofit { background: #0ea5e9; width: 100%; max-width: 380px; margin-top: 12px; padding: 12px; font-size: 14px; border-radius: 12px; justify-content: center; }
+  .side-panel { position: fixed; top: 0; bottom: 0; width: 440px; background: #fff; box-shadow: 0 0 40px rgba(0,0,0,0.3); z-index: 1000; display: flex; flex-direction: column; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+  .side-panel.left { left: 0; transform: translateX(-100%); border-right: none; border-top-right-radius: 20px; border-bottom-right-radius: 20px; }
+  .side-panel.right { right: 0; width: 360px; transform: translateX(100%); border-top-left-radius: 20px; border-bottom-left-radius: 20px; }
+  .side-panel.active { transform: translateX(0); }
+  .side-header { padding: 20px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; cursor: pointer; user-select: none; transition: background 0.2s; border-radius: inherit; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .side-header:hover { background: #f1f5f9; }
+  .side-header h2 { font-size: 16px; color: #4c1d95; margin: 0; display: flex; align-items: center; gap: 10px; }
+  .side-header .close-icon { font-size: 24px; color: #94a3b8; line-height: 1; font-weight: 300; }
+  .side-body { padding: 20px; overflow-y: auto; flex: 1; background: #fafbfc; }
+  .side-body::-webkit-scrollbar { width: 6px; }
+  .side-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  .tabs { display: flex; gap: 5px; margin-bottom: 15px; background: #f1f5f9; padding: 5px; border-radius: 10px; }
+  .tab-btn { flex: 1; padding: 10px; border: none; background: transparent; border-radius: 8px; cursor: pointer; font-weight: 700; color: #64748b; transition: all 0.2s; font-size: 13px; }
+  .tab-btn.active { background: #fff; color: #4c1d95; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .acc-item { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+  .acc-header { padding: 14px 16px; background: #fff; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: #334155; transition: all 0.2s; }
+  .acc-header:hover { background: #f8fafc; }
+  .acc-header.active { background: #ede9fe; color: #4c1d95; border-bottom: 1px solid #ddd6fe; }
+  .acc-content { display: none; padding: 16px; background: #fff; }
+  .acc-content.active { display: block; }
+  .field-row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .field-row label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; min-width: 75px; }
+  .field-row input[type=text], .field-row input[type=url], .field-row textarea { flex: 1; min-width: 80px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); transition: border 0.2s; font-family: inherit; }
+  .field-row textarea { resize: vertical; min-height: 44px; }
+  .field-row input[type=color] { width: 38px; height: 34px; border: 1px solid #cbd5e1; border-radius: 8px; cursor: pointer; padding: 2px; background: #fff; }
+  .manual-input { width: 52px; padding: 6px 4px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; text-align: center; font-weight: 600; color: #334155; outline: none; }
+  .manual-input:focus { border-color: #7c3aed; box-shadow: 0 0 0 2px #ddd6fe; }
+  .field-row input[type=range] { flex: 1; height: 8px; cursor: pointer; border-radius: 4px; transition: opacity 0.2s; }
+  .field-row input[type=range]:active { opacity: 0.8; }
+  
+    /* Жесткая привязка цветов ползунков к классам блоков */
+  .block-bg input[type=range] { accent-color: #ef4444; }
+  .block-frame input[type=range] { accent-color: #3b82f6; }
+  .block-size input[type=range] { accent-color: #f97316; }
+  .block-font input[type=range] { accent-color: #10b981; }
+  .mini-btn { background: #f1f5f9; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; color: #475569; transition: all 0.1s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+  .mini-btn:hover { background: #e2e8f0; }
+  .mini-btn:active { transform: translateY(1px); box-shadow: none; }
+  .mini-btn.upload { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; position: relative; overflow: hidden; }
+  .mini-btn.upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .mini-btn.delete { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+  .mini-btn.copy { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
+  .setting-group { background: #fff; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+  .setting-group h3 { font-size: 12px; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.5px; border-radius: 8px; padding: 6px 12px; display: inline-block; font-weight: 800; }
+  .sg-sheet h3 { background: #dbeafe; color: #1e40af; }
+  .sg-bg h3 { background: #fce7f3; color: #9d174d; }
+  .setting-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .setting-row label { font-size: 12px; color: #475569; min-width: 95px; font-weight: 600; }
+  .setting-row input[type=number], .setting-row select { flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+  .setting-row input[type=color] { width: 40px; height: 32px; border: 1px solid #cbd5e1; border-radius: 8px; cursor: pointer; padding: 2px; background: #fff; }
+  .swatches { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .swatch { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.15s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+  .swatch:hover { transform: scale(1.15); }
+  .swatch.active { border-color: #7c3aed; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #7c3aed; }
+  .card-inner { width: 100%; height: 100%; display: flex; flex-direction: column; position: relative; overflow: hidden; box-sizing: border-box; }
+  .card-inner .ci-img-area { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; background: #ffffff; }
+  .card-inner .ci-img-area img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .card-inner .ci-top-panel, .card-inner .ci-bottom-panel { flex-shrink: 0; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.15; word-wrap: break-word; overflow-wrap: anywhere; overflow: hidden; padding: 1.5% 0; font-weight: inherit; }
+  .card-inner .ci-overlay-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.1; word-wrap: break-word; overflow-wrap: anywhere; white-space: normal; font-weight: inherit; }
+  .card-inner .ci-frame { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+  .card-inner .ci-frame svg, .card-inner .ci-frame img { width: 100%; height: 100%; display: block; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.active { display: flex; }
+  .modal-content { background: #fff; border-radius: 16px; max-width: 1100px; width: 100%; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+  .modal-header { padding: 16px 24px; background: #f8fafc; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; border-bottom: 1px solid #e2e8f0; }
+  .modal-header h2 { font-size: 18px; color: #4c1d95; }
+  .modal-close { background: none; border: none; font-size: 28px; cursor: pointer; color: #94a3b8; transition: color 0.2s; }
+  .modal-close:hover { color: #ef4444; }
+  .modal-body { padding: 24px; overflow-y: auto; background: #94a3b8; }
+  .modal-footer { padding: 16px 24px; background: #f8fafc; display: flex; justify-content: flex-end; gap: 12px; flex-shrink: 0; border-top: 1px solid #e2e8f0; }
+  .page-preview { background: #fff; width: 100%; max-width: 780px; margin: 0 auto 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; position: relative; display: flex; flex-direction: column; }
+  .page-preview .page-label { text-align: center; font-size: 12px; color: #64748b; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px dashed #cbd5e1; font-weight: 600; }
+  .page-grid { display: grid; width: 100%; flex: 1; }
+  .page-card-wrap { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page-footer { text-align: center; font-size: 11px; color: #64748b; padding-top: 10px; border-top: 1px solid #e2e8f0; flex-shrink: 0; margin-top: 15px; }
+  .page-footer a { color: #4c1d95; text-decoration: none; }
+  .copyright { font-size: 9px; color: #94a3b8; margin-top: 4px; }
+  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); background: #1e293b; color: #fff; padding: 14px 28px; border-radius: 12px; font-size: 14px; font-weight: 600; z-index: 3000; opacity: 0; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.3, 1); pointer-events: none; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .toast.success { background: #10b981; } .toast.error { background: #ef4444; }
+  .main-footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; padding: 12px; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); font-size: 13px; color: #4c1d95; font-weight: 600; z-index: 100; border-top: 1px solid #e2e8f0; box-shadow: 0 -2px 10px rgba(0,0,0,0.02); }
+  .main-footer a { color: #7c3aed; text-decoration: none; border-bottom: 1px dashed #7c3aed; }
+
+  .custom-select-wrapper { position: relative; flex: 1; min-width: 120px; }
+  .custom-select-display { padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; font-size: 13px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+  .custom-select-display::after { content: '▼'; font-size: 10px; color: #94a3b8; margin-left: 5px; }
+  .custom-select-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: none; margin-top: 2px; }
+  .custom-select-dropdown.active { display: block; }
+  .custom-option { padding: 8px 12px; cursor: pointer; font-size: 13px; transition: background 0.1s; }
+  .custom-option:hover { background: #f1f5f9; }
+  .custom-option.selected { background: #e0e7ff; font-weight: 700; color: #3730a3; }
+
+  @media print {
+    body > *:not(#printRoot) { display: none !important; }
+    #printRoot { display: block !important; }
+    body { padding: 0 !important; background: #fff !important; margin: 0 !important; }
+    .main-footer { display: none !important; }
+    #printRoot, #printRoot * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+  }
+  #printRoot { display: none; }
+  #printRoot .print-page { page-break-after: always; break-after: page; overflow: hidden; position: relative; display: flex; flex-direction: column; box-sizing: border-box; margin: 0; }
+  #printRoot .print-page:last-child { page-break-after: auto; break-after: auto; }
+  #printRoot .print-grid { width: 100%; flex: 1; display: grid; box-sizing: border-box; min-height: 0; place-content: stretch; overflow: hidden; }
+  #printRoot .print-card-wrap { position: relative; overflow: hidden; box-sizing: border-box; display: flex; align-items: center; justify-content: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #printRoot .print-footer { text-align: center; font-size: 10pt; color: #64748b; padding-top: 3mm; border-top: 1px solid #e2e8f0; flex-shrink: 0; height: auto; }
+  #printRoot .print-footer a { color: #4c1d95; text-decoration: none; }
+  #printRoot .copyright { font-size: 8pt; color: #94a3b8; margin-top: 1mm; }
+
+  @media (max-width: 1024px) {
+    .workspace.panel-left-open, .workspace.panel-right-open, .workspace.panel-both-open { padding: 0; }
+    .side-panel { width: 85%; max-width: 400px; box-shadow: -10px 0 30px rgba(0,0,0,0.2); }
+    .side-panel.left { box-shadow: 10px 0 30px rgba(0,0,0,0.2); border-radius: 0; }
+    .side-panel.right { border-radius: 0; }
+    .app-header { padding: 15px; }
+    .app-header h1 { font-size: 16px; width: 100%; margin-bottom: 10px; text-align: center; }
+    .btn { padding: 10px 14px; font-size: 13px; flex: 1; justify-content: center; }
+  }
+  @media (max-width: 600px) {
+    body { padding: 10px 10px 60px; }
+    .preview-stage { padding: 15px; min-height: 300px; }
+    .preview-card { max-width: 100%; }
+    .side-panel { width: 100%; max-width: none; }
+    .setting-row { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .setting-row label { min-width: auto; }
+    .setting-row input[type=range], .setting-row select, .setting-row input[type=number] { width: 100%; }
+    .field-row { flex-direction: column; align-items: flex-start; }
+    .field-row input[type=text], .field-row input[type=url] { width: 100%; }
+    .mini-btn { padding: 8px 12px; font-size: 13px; flex: 1; justify-content: center; }
+    .main-footer { font-size: 11px; padding: 10px; }
+  }
+  
+  .preview-card {
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+  }
+  .preview-card.ready {
+    visibility: visible;
+    opacity: 1;
+  }
+</style></head><body>
+<div class="app-header">
+  <h1>📚 Конструктор карточек</h1>
+  <button class="btn btn-toggle" id="btnToggleLeft" onclick="togglePanel('left')">📋 Карточки</button>
+  <button class="btn btn-toggle" id="btnToggleRight" onclick="togglePanel('right')">⚙️ Общие</button>
+  <button class="btn btn-undo" onclick="undoAction()">↩️ Отменить</button>
+  <button class="btn btn-preview" onclick="openPreview()">👁 Просмотр</button>
+  <button class="btn btn-pdf" onclick="printPDF()">🖨 PDF</button>
+</div>
+
+<div class="workspace" id="mainWorkspace">
+  <div class="center-preview">
+    <div class="preview-stage">
+      <div class="preview-card" id="previewCard"></div>
+    </div>
+    <div class="preview-info" id="previewInfo">Карточка 1 из 1</div>
+    <div class="preview-warn" id="previewWarn"></div>
+    <button class="btn btn-autofit" onclick="autofitCurrent()">🔧 Подогнать под карточку</button>
+  </div>
+</div>
+
+<div class="side-panel left" id="panelLeft">
+  <div class="side-header" onclick="togglePanel('left')">
+    <h2>📋 Список карточек</h2>
+    <span class="close-icon">×</span>
+  </div>
+  <div class="side-body" id="cardsAccordion"></div>
+  <div style="padding: 20px; border-top: 1px solid #e2e8f0; flex-shrink: 0; background: #f8fafc;">
+    <button class="btn btn-save" style="width:100%; justify-content:center; padding: 12px;" onclick="addCard()">➕ Добавить карточку</button>
+    <button class="btn btn-danger" style="width:100%; justify-content:center; margin-top:10px; background:#ef4444; padding: 12px;" onclick="clearAllCards()">🗑 Удалить всё</button>
+  </div>
+</div>
+
+<div class="side-panel right" id="panelRight">
+  <div class="side-header" onclick="togglePanel('right')">
+    <h2>⚙️ Общие настройки</h2>
+    <span class="close-icon">×</span>
+  </div>
+  <div class="side-body" id="settingsGrid"></div>
+</div>
+
+<div class="modal-overlay" id="previewModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Предпросмотр PDF</h2>
+      <button class="modal-close" onclick="closePreview()">×</button>
+    </div>
+    <div class="modal-body" id="previewBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" style="background:#64748b;" onclick="closePreview()">Закрыть</button>
+      <button class="btn btn-pdf" onclick="closePreview(); printPDF();">🖨 Печать / Сохранить PDF</button>
+    </div>
+  </div>
+</div>
+
+<div id="printRoot"></div>
+<div class="toast" id="toast"></div>
+
+<footer class="main-footer">
+  Свинина Галина Сергеевна | <a href="https://vk.ru/logika24" target="_blank" rel="noopener">vk.ru/logika24</a>
+</footer>
+
+<script>
+/* ============================================================
+   КОНСТАНТЫ И ХРАНИЛИЩЕ ШРИФТОВ
+   ============================================================ */
+const MM_TO_PX = 3.7795275591;
+const PAGE_SIZES = { A4: { w: 210, h: 297 }, A5: { w: 148, h: 210 }, Letter: { w: 216, h: 279 } };
+const GRID_OPTIONS = [
+  { id: '1x1', label: '1 × 1 (На весь лист)', cols: 1, rows: 1 },
+  { id: '1x2', label: '1 × 2', cols: 1, rows: 2 }, { id: '2x2', label: '2 × 2', cols: 2, rows: 2 },
+  { id: '2x3', label: '2 × 3', cols: 2, rows: 3 }, { id: '2x4', label: '2 × 4', cols: 2, rows: 4 },
+  { id: '3x3', label: '3 × 3', cols: 3, rows: 3 }, { id: '3x4', label: '3 × 4', cols: 3, rows: 4 },
+  { id: '4x4', label: '4 × 4', cols: 4, rows: 4 }
+];
+const SYSTEM_FONTS = ['Segoe UI', 'Arial', 'Georgia', 'Times New Roman', 'Verdana', 'Comic Sans MS', 'Courier New', 'Tahoma'];
+const GOOGLE_FONTS = [
+  'Roboto', 'Open Sans', 'Montserrat', 'Nunito', 'Comfortaa', 
+  'Caveat', 'Pacifico', 'Marck Script', 'Bad Script', 'Neucha', 
+  'Lobster', 'Ruslan Display', 'Russo One', 'Pangolin', 'Underdog', 
+  'Balsamiq Sans', 'Fredoka One', 'Chewy', 'Comic Neue', 'Amatic SC',
+  'Lora', 'Playfair Display', 'Merriweather', 'PT Serif',
+  'Rubik', 'Raleway', 'Fira Sans', 'Oswald',
+  'Satisfy', 'Great Vibes', 'Dancing Script',
+  'Press Start 2P'
+];
+const PAGE_BG_PRESETS = ['#ffffff', '#fef9e7', '#dbeafe', '#d1fae5', '#fce7f3', '#ede9fe', '#f3f4f6', '#0f172a'];
+const customFonts = {};
+</script><script>
+/* ============================================================
+   БАНК ДЕКОРАТИВНЫХ РАМОК
+   ============================================================ */
+const FRAME_STYLES = [
+  { id: 'none', label: 'Без рамки' }, { id: 'solid', label: 'Классическая' },
+  { id: 'double', label: 'Двойная' }, { id: 'rounded', label: 'Скруглённая' },
+  { id: 'ornament', label: 'Орнамент' }, { id: 'dots', label: 'Точки' },
+  { id: 'zigzag', label: 'Зигзаг' }, { id: 'wave', label: 'Волна' },
+  { id: 'corners', label: 'Уголки' }, { id: 'leaf', label: 'Листья' },
+  { id: 'stars', label: 'Звёздочки' }, { id: 'cloud', label: 'Облако' },
+  { id: 'kids', label: 'Детская' },
+  { id: 'heart', label: 'Сердечки' },
+  { id: 'dashed', label: 'Штриховая' },
+  { id: 'stitch', label: 'Стёжка (пунктир)' },
+  { id: 'doublewave', label: 'Двойная волна' },
+  { id: 'leaves', label: 'Веточки' },
+  { id: 'heart-double', label: 'Двойные сердечки' },
+  { id: 'floral', label: 'Цветочный узор' },
+  { id: 'geometric', label: 'Геометрия' },
+  { id: 'bubbles', label: 'Пузырьки' },
+  { id: 'vintage', label: 'Винтажная' },
+  { id: 'rainbow', label: 'Радуга' },
+  { id: 'snowflake', label: 'Снежинки' },
+  { id: 'confetti', label: 'Конфетти' },
+  { id: 'custom', label: 'Своя картинка' }
+];
+
+function getFrameSVG(frameId, strokeColor, strokeWidthUnits) {
+  const sw = Math.max(2, strokeWidthUnits);
+  const c = strokeColor;
+  const common = 'fill="none" stroke="' + c + '" stroke-linejoin="round" stroke-linecap="round"';
+  
+  switch (frameId) {
+    case 'solid': return '<svg viewBox="0 0 300 400" preserveAspectRatio="none"><rect x="' + sw/2 + '" y="' + sw/2 + '" width="' + (300 - sw) + '" height="' + (400 - sw) + '" ' + common + ' stroke-width="' + sw + '"/></svg>';
+    case 'double': return '<svg viewBox="0 0 300 400" preserveAspectRatio="none"><rect x="' + sw + '" y="' + sw + '" width="' + (300 - sw*2) + '" height="' + (400 - sw*2) + '" ' + common + ' stroke-width="' + sw*0.6 + '"/><rect x="' + sw*3 + '" y="' + sw*3 + '" width="' + (300 - sw*6) + '" height="' + (400 - sw*6) + '" ' + common + ' stroke-width="' + sw*0.35 + '"/></svg>';
+    case 'rounded': return '<svg viewBox="0 0 300 400" preserveAspectRatio="none"><rect x="' + sw/2 + '" y="' + sw/2 + '" width="' + (300 - sw) + '" height="' + (400 - sw) + '" ' + common + ' stroke-width="' + sw + '" rx="20" ry="20"/></svg>';
+    case 'ornament': {
+      const m = sw;
+      const inner = sw * 2.2;
+      return '<svg viewBox="0 0 300 400" preserveAspectRatio="none">' +
+        '<rect x="' + m/2 + '" y="' + m/2 + '" width="' + (300 - m) + '" height="' + (400 - m) + '" ' + common + ' stroke-width="' + sw*0.6 + '"/>' +
+        '<rect x="' + inner + '" y="' + inner + '" width="' + (300 - inner*2) + '" height="' + (400 - inner*2) + '" ' + common + ' stroke-width="' + sw*0.35 + '"/>' +
+        '<path d="M ' + (inner + 18) + ' ' + inner + ' q 0 -14 18 -14 q 14 0 14 14" ' + common + ' stroke-width="' + sw*0.4 + '"/>' +
+        '<path d="M ' + (300 - inner - 18) + ' ' + inner + ' q 0 -14 -18 -14 q -14 0 -14 14" ' + common + ' stroke-width="' + sw*0.4 + '"/>' +
+        '<path d="M ' + (inner + 18) + ' ' + (400 - inner) + ' q 0 14 18 14 q 14 0 14 -14" ' + common + ' stroke-width="' + sw*0.4 + '"/>' +
+        '<path d="M ' + (300 - inner - 18) + ' ' + (400 - inner) + ' q 0 14 -18 14 q -14 0 -14 -14" ' + common + ' stroke-width="' + sw*0.4 + '"/>' +
+        '<path d="M 150 ' + (m*0.5) + ' l 8 8 l -8 8 l -8 -8 Z" ' + common + ' stroke-width="' + sw*0.3 + '"/>' +
+        '<path d="M 150 ' + (400 - m*0.5) + ' l 8 -8 l -8 -8 l -8 8 Z" ' + common + ' stroke-width="' + sw*0.3 + '"/>' +
+        '<path d="M ' + (m*0.5) + ' 200 l 8 8 l -8 8 l -8 -8 Z" ' + common + ' stroke-width="' + sw*0.3 + '"/>' +
+        '<path d="M ' + (300 - m*0.5) + ' 200 l -8 8 l 8 8 l 8 -8 Z" ' + common + ' stroke-width="' + sw*0.3 + '"/>' +
+        '</svg>';
+    }
+    case 'dots': return '<svg viewBox="0 0 300 400" preserveAspectRatio="none"><defs><pattern id="dotpat" x="0" y="0" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="' + (Math.max(2, sw*0.45)) + '" fill="' + c + '"/></pattern></defs><rect x="' + sw + '" y="' + sw + '" width="' + (300 - sw*2) + '" height="' + (400 - sw*2) + '" fill="none" stroke="url(#dotpat)" stroke-width="' + sw + '"/></svg>';
+    case 'zigzag': {
+      const pts = [], step = 12, margin = sw;
+      for (let x = margin; x <= 300 - margin; x += step) pts.push(x + ',' + (margin + (Math.round(x/step) % 2 === 0 ? 0 : 6)));
+      for (let y = margin; y <= 400 - margin; y += step) pts.push(((300 - margin) - (Math.round(y/step) % 2 === 0 ? 0 : 6)) + ',' + y);
+      for (let x2 = 300 - margin; x2 >= margin; x2 -= step) pts.push(x2 + ',' + ((400 - margin) - (Math.round(x2/step) % 2 === 0 ? 0 : 6)));
+      for (let y2 = 400 - margin; y2 >= margin; y2 -= step) pts.push((margin + (Math.round(y2/step) % 2 === 0 ? 0 : 6)) + ',' + y2);
+      return '<svg viewBox="0 0 300 400" preserveAspectRatio="none"><polygon points="' + pts.join(' ') + '" ' + common + ' stroke-width="' + sw*0.5 + '"/></svg>';
+    }
+    case 'wave': return '<svg viewBox="0 0 300 400" preserveAspectRatio="none"><rect x="' + sw/2 + '" y="' + sw/2 + '" width="' + (300 - sw) + '" height="' + (400 - sw) + '" ' + common + ' stroke-width="' + sw*0.4 + '"/><path d="M ' + sw*2 + ' ' + sw*2 + ' Q 150 ' + (sw*2 - 8) + ' ' + (300 - sw*2) + ' ' + sw*2 + ' Q ' + (300 - sw*2 + 8) + ' 150 ' + (300 - sw*2) + ' ' + (400 - sw*2) + ' Q 150 ' + (400 - sw*2 + 8) + ' ' + sw*2 + ' ' + (400 - sw*2) + ' Q ' + (sw*2 - 8) + ' 150 ' + sw*2 + ' ' + sw*2 + ' Z" ' + common + ' stroke-width="' + sw*0.35 + '"/></svg>';
+    case 'corners': {
+      const L = 40;
+      return '<svg viewBox="0 0 300 400" preserveAspectRatio="none"><path d="M ' + sw + ' ' + (sw + L) + ' L ' + sw + ' ' + sw + ' L ' + (sw + L) + ' ' + sw + '" ' + common + ' stroke-width="' + sw + '"/><path d="M ' + (300 - sw - L) + ' ' + sw + ' L ' + (300 - sw) + ' ' + sw + ' L ' + (300 - sw) + ' ' + (sw + L) + '" ' + common + ' stroke-width="' + sw + '"/><path d="M ' + sw + ' ' + (400 - sw - L) + ' L ' + sw + ' ' + (400 - sw) + ' L ' + (sw + L) + ' ' + (400 - sw) + '" ' + common + ' stroke-width="' + sw + '"/><path d="M ' + (300 - sw - L) + ' ' + (400 - sw) + ' L ' + (300 - sw) + ' ' + (400 - sw) + ' L ' + (300 - sw) + ' ' + (400 - sw - L) + '" ' + common + ' stroke-width="' + sw + '"/></svg>';
+    }
+    case 'leaf': {
+      const leaf = (x, y, rot) => '<g transform="translate(' + x + ',' + y + ') rotate(' + rot + ')"><path d="M 0 0 Q 15 -20 30 0 Q 15 20 0 0 Z" ' + common + ' stroke-width="' + sw*0.4 + '"/><path d="M 0 0 L 25 0" ' + common + ' stroke-width="' + sw*0.3 + '"/></g>';
+      return '<svg viewBox="0 0 300 400" preserveAspectRatio="none"><rect x="' + sw/2 + '" y="' + sw/2 + '" width="' + (300 - sw) + '" height="' + (400 - sw) + '" ' + common + ' stroke-width="' + sw*0.35 + '"/>' + leaf(15, 15, 45) + leaf(285, 15, 135) + leaf(15, 385, -45) + leaf(285, 385, -135) + '</svg>';
+    }
+    case 'stars': {
+      const star = (x, y, size) => {
+        const pts = [];
+        for (let i = 0; i < 10; i++) { const r = i % 2 === 0 ? size : size * 0.4; const a = (Math.PI / 5) * i - Math.PI / 2; pts.push((x + Math.cos(a) * r) + ',' + (y + Math.sin(a) * r)); }
+        return '<polygon points="' + pts.join(' ') + '" ' + common + ' stroke-width="' + sw*0.35 + '"/>';
+      };
+      return '<svg viewBox="0 0 300 400" preserveAspectRatio="none"><rect x="' + sw/2 + '" y="' + sw/2 + '" width="' + (300 - sw) + '" height="' + (400 - sw) + '" ' + common + ' stroke-width="' + sw*0.35 + '"/>' + star(25, 25, 10) + star(275, 25, 10) + star(25, 375, 10) + star(275, 375, 10) + star(150, 20, 8) + star(150, 380, 8) + '</svg>';
+    }
+    case 'cloud': return '<svg viewBox="0 0 300 400" preserveAspectRatio="none"><path d="M 30 ' + sw + ' Q 30 0 60 5 Q 90 -5 110 ' + sw + ' L 190 ' + sw + ' Q 210 -5 240 5 Q 270 0 270 ' + sw + ' L 270 ' + (400 - sw) + ' Q 270 400 240 395 Q 210 405 190 ' + (400 - sw) + ' L 110 ' + (400 - sw) + ' Q 90 405 60 395 Q 30 400 30 ' + (400 - sw) + ' Z" ' + common + ' stroke-width="' + sw*0.6 + '"/></svg>';
+    case 'kids': {
+      const teeth = [], step2 = 20, m = sw;
+      for (let x = m; x < 300 - m; x += step2) teeth.push('M ' + x + ' ' + m + ' L ' + (x + step2/2) + ' ' + (m + step2/2) + ' L ' + (x + step2) + ' ' + m);
+      for (let y = m; y < 400 - m; y += step2) teeth.push('M ' + (300 - m) + ' ' + y + ' L ' + (300 - m - step2/2) + ' ' + (y + step2/2) + ' L ' + (300 - m) + ' ' + (y + step2));
+      for (let x2 = m; x2 < 300 - m; x2 += step2) teeth.push('M ' + (x2 + step2) + ' ' + (400 - m) + ' L ' + (x2 + step2/2) + ' ' + (400 - m - step2/2) + ' L ' + x2 + ' ' + (400 - m));
+      for (let y2 = m; y2 < 400 - m; y2 += step2) teeth.push('M ' + m + ' ' + (y2 + step2) + ' L ' + (m + step2/2) + ' ' + (y2 + step2/2) + ' L ' + m + ' ' + y2);
+      return '<svg viewBox="0 0 300 400" preserveAspectRatio="none"><path d="' + teeth.join(' ') + '" ' + common + ' stroke-width="' + sw*0.5 + '"/></svg>';
+    }
+    case 'heart': {
+      const h = (x, y) => `<path d="M ${x} ${y} A 4 4 0 0 0 ${x+8} ${y} A 4 4 0 0 0 ${x+16} ${y} Q ${x+16} ${y+6} ${x+8} ${y+10} Q ${x} ${y+6} ${x} ${y} Z" ${common} stroke-width="${sw*0.4}"/>`;
+      let hearts = '';
+      for (let i = 0; i < 300; i += 30) { hearts += h(i + 5, 10); hearts += h(i + 5, 380); }
+      for (let i = 0; i < 400; i += 30) { hearts += h(10, i + 15); hearts += h(280, i + 15); }
+      return `<svg viewBox="0 0 300 400" preserveAspectRatio="none"><rect x="${sw/2}" y="${sw/2}" width="${300-sw}" height="${400-sw}" ${common} stroke-width="${sw*0.3}"/>${hearts}</svg>`;
+    }
+    case 'dashed':
+      return `<svg viewBox="0 0 300 400" preserveAspectRatio="none"><rect x="${sw*2}" y="${sw*2}" width="${300-sw*4}" height="${400-sw*4}" fill="none" stroke="${c}" stroke-width="${sw*0.8}" stroke-dasharray="${sw*4} ${sw*2}"/></svg>`;
+    case 'stitch':
+      return `<svg viewBox="0 0 300 400" preserveAspectRatio="none"><rect x="${sw*3}" y="${sw*3}" width="${300-sw*6}" height="${400-sw*6}" fill="none" stroke="${c}" stroke-width="${sw*0.5}" stroke-dasharray="${sw*1.5} ${sw*1.5}"/></svg>`;
+    case 'doublewave': {
+      const wavePath = (offset) => `M ${sw*2} ${offset} Q 150 ${offset-10} ${300-sw*2} ${offset} Q ${300-sw*2+10} 200 ${300-sw*2} ${400-offset} Q 150 ${400-offset+10} ${sw*2} ${400-offset} Q ${sw*2-10} 200 ${sw*2} ${offset} Z`;
+      return `<svg viewBox="0 0 300 400" preserveAspectRatio="none"><path d="${wavePath(sw*2)}" ${common} stroke-width="${sw*0.5}"/><path d="${wavePath(sw*5)}" ${common} stroke-width="${sw*0.3}"/></svg>`;
+    }
+    case 'leaves': {
+      const leaf = (x, y, rot) => `<g transform="translate(${x},${y}) rotate(${rot})"><path d="M 0 0 Q 10 -10 20 0 Q 10 10 0 0 Z" ${common} stroke-width="${sw*0.3}"/></g>`;
+      let leaves = '';
+      for(let i=20; i<400; i+=40) { leaves += leaf(15, i, 45) + leaf(285, i, 135); }
+      for(let i=20; i<300; i+=40) { leaves += leaf(i, 15, -45) + leaf(i, 385, 45); }
+      return `<svg viewBox="0 0 300 400" preserveAspectRatio="none"><rect x="${sw/2}" y="${sw/2}" width="${300-sw}" height="${400-sw}" ${common} stroke-width="${sw*0.3}"/>${leaves}</svg>`;
+    }
+    case 'heart-double': {
+      const heartAt = (x, y, s) => `<path transform="translate(${x},${y}) scale(${s})" d="M 0 0 A 3 3 0 0 0 6 0 A 3 3 0 0 0 12 0 Q 12 5 6 8 Q 0 5 0 0 Z" ${common} stroke-width="${sw*0.3}"/>`;
+      let hh = '';
+      for (let x = 15; x < 290; x += 24) { hh += heartAt(x, 12, 0.7); hh += heartAt(x, 26, 0.5); }
+      for (let x = 15; x < 290; x += 24) { hh += heartAt(x, 372, 0.7); hh += heartAt(x, 386, 0.5); }
+      for (let y = 45; y < 360; y += 24) { hh += heartAt(12, y, 0.7); hh += heartAt(26, y, 0.5); }
+      for (let y = 45; y < 360; y += 24) { hh += heartAt(272, y, 0.7); hh += heartAt(286, y, 0.5); }
+      return `<svg viewBox="0 0 300 400" preserveAspectRatio="none">${hh}</svg>`;
+    }    case 'floral': {
+      const flower = (x, y, s) => {
+        let petals = '';
+        for (let i = 0; i < 5; i++) {
+          const a = (Math.PI * 2 / 5) * i;
+          const px = x + Math.cos(a) * 8 * s;
+          const py = y + Math.sin(a) * 8 * s;
+          petals += `<circle cx="${px}" cy="${py}" r="${5*s}" ${common} stroke-width="${sw*0.25}"/>`;
+        }
+        return `<g>${petals}<circle cx="${x}" cy="${y}" r="${3*s}" fill="${c}" opacity="0.6"/></g>`;
+      };
+      let fl = '';
+      fl += flower(30, 30, 1); fl += flower(270, 30, 1);
+      fl += flower(30, 370, 1); fl += flower(270, 370, 1);
+      fl += flower(150, 20, 0.7); fl += flower(150, 380, 0.7);
+      fl += flower(20, 200, 0.7); fl += flower(280, 200, 0.7);
+      return `<svg viewBox="0 0 300 400" preserveAspectRatio="none"><rect x="${sw/2}" y="${sw/2}" width="${300-sw}" height="${400-sw}" ${common} stroke-width="${sw*0.4}" rx="12"/>${fl}</svg>`;
+    }
+    case 'geometric': {
+      let geos = '';
+      const tri = (x, y, dir) => {
+        if (dir === 'up') return `<path d="M ${x} ${y+8} L ${x+6} ${y} L ${x+12} ${y+8} Z" ${common} stroke-width="${sw*0.3}"/>`;
+        if (dir === 'down') return `<path d="M ${x} ${y} L ${x+6} ${y+8} L ${x+12} ${y} Z" ${common} stroke-width="${sw*0.3}"/>`;
+        if (dir === 'left') return `<path d="M ${x+8} ${y} L ${x} ${y+6} L ${x+8} ${y+12} Z" ${common} stroke-width="${sw*0.3}"/>`;
+        return `<path d="M ${x} ${y} L ${x+8} ${y+6} L ${x} ${y+12} Z" ${common} stroke-width="${sw*0.3}"/>`;
+      };
+      for (let x = 12; x < 288; x += 18) { geos += tri(x, 8, 'down'); geos += tri(x, 372, 'up'); }
+      for (let y = 28; y < 372; y += 18) { geos += tri(8, y, 'right'); geos += tri(278, y, 'left'); }
+      return `<svg viewBox="0 0 300 400" preserveAspectRatio="none"><rect x="${sw/2}" y="${sw/2}" width="${300-sw}" height="${400-sw}" ${common} stroke-width="${sw*0.5}"/>${geos}</svg>`;
+    }
+    case 'bubbles': {
+      let bub = '';
+      const bubble = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}" ${common} stroke-width="${sw*0.3}"/><circle cx="${x - r*0.3}" cy="${y - r*0.3}" r="${r*0.2}" fill="${c}" opacity="0.5"/>`;
+      for (let x = 20; x < 290; x += 28) {
+        const r1 = 5 + Math.random() * 4;
+        bub += bubble(x, 18 + Math.random()*8, r1);
+        bub += bubble(x, 378 - Math.random()*8, 5 + Math.random()*4);
+      }
+      for (let y = 40; y < 370; y += 28) {
+        bub += bubble(15 + Math.random()*6, y, 5 + Math.random()*4);
+        bub += bubble(283 - Math.random()*6, y, 5 + Math.random()*4);
+      }
+      return `<svg viewBox="0 0 300 400" preserveAspectRatio="none">${bub}</svg>`;
+    }
+    case 'vintage': {
+      const L = 30;
+      const corners = 
+        `<path d="M ${sw*2} ${sw*2+L} L ${sw*2} ${sw*2} L ${sw*2+L} ${sw*2}" ${common} stroke-width="${sw*0.8}"/>` +
+        `<path d="M ${300-sw*2-L} ${sw*2} L ${300-sw*2} ${sw*2} L ${300-sw*2} ${sw*2+L}" ${common} stroke-width="${sw*0.8}"/>` +
+        `<path d="M ${sw*2} ${400-sw*2-L} L ${sw*2} ${400-sw*2} L ${sw*2+L} ${400-sw*2}" ${common} stroke-width="${sw*0.8}"/>` +
+        `<path d="M ${300-sw*2-L} ${400-sw*2} L ${300-sw*2} ${400-sw*2} L ${300-sw*2} ${400-sw*2-L}" ${common} stroke-width="${sw*0.8}"/>`;
+      const dots = 
+        `<circle cx="150" cy="${sw*3}" r="${sw*1.5}" fill="${c}"/>` +
+        `<circle cx="150" cy="${400-sw*3}" r="${sw*1.5}" fill="${c}"/>` +
+        `<circle cx="${sw*3}" cy="200" r="${sw*1.5}" fill="${c}"/>` +
+        `<circle cx="${300-sw*3}" cy="200" r="${sw*1.5}" fill="${c}"/>`;
+      return `<svg viewBox="0 0 300 400" preserveAspectRatio="none"><rect x="${sw*2}" y="${sw*2}" width="${300-sw*4}" height="${400-sw*4}" ${common} stroke-width="${sw*0.5}"/><rect x="${sw*4}" y="${sw*4}" width="${300-sw*8}" height="${400-sw*8}" ${common} stroke-width="${sw*0.3}"/>${corners}${dots}</svg>`;
+    }
+    case 'rainbow': {
+      const colors = [c, c, c, c, c];
+      let arcs = '';
+      for (let i = 0; i < 5; i++) {
+        const off = sw*2 + i * sw*1.5;
+        arcs += `<rect x="${off}" y="${off}" width="${300-off*2}" height="${400-off*2}" ${common} stroke-width="${sw*0.4}" opacity="${0.4 + i*0.15}" rx="${6+i*2}"/>`;
+      }
+      return `<svg viewBox="0 0 300 400" preserveAspectRatio="none">${arcs}</svg>`;
+    }
+    case 'snowflake': {
+      const snowflake = (x, y, s) => {
+        let lines = '';
+        for (let i = 0; i < 6; i++) {
+          const a = (Math.PI / 3) * i;
+          const x1 = x, y1 = y;
+          const x2 = x + Math.cos(a) * 10 * s;
+          const y2 = y + Math.sin(a) * 10 * s;
+          const xm = x + Math.cos(a) * 5 * s;
+          const ym = y + Math.sin(a) * 5 * s;
+          lines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" ${common} stroke-width="${sw*0.35}"/>`;
+          const a2 = a + Math.PI/4;
+          lines += `<line x1="${xm}" y1="${ym}" x2="${xm + Math.cos(a2)*3*s}" y2="${ym + Math.sin(a2)*3*s}" ${common} stroke-width="${sw*0.25}"/>`;
+          const a3 = a - Math.PI/4;
+          lines += `<line x1="${xm}" y1="${ym}" x2="${xm + Math.cos(a3)*3*s}" y2="${ym + Math.sin(a3)*3*s}" ${common} stroke-width="${sw*0.25}"/>`;
+        }
+        return `<g>${lines}</g>`;
+      };
+      let sn = '';
+      sn += snowflake(30, 30, 1); sn += snowflake(270, 30, 1);
+      sn += snowflake(30, 370, 1); sn += snowflake(270, 370, 1);
+      sn += snowflake(150, 15, 0.7); sn += snowflake(150, 385, 0.7);
+      sn += snowflake(15, 200, 0.7); sn += snowflake(285, 200, 0.7);
+      return `<svg viewBox="0 0 300 400" preserveAspectRatio="none"><rect x="${sw/2}" y="${sw/2}" width="${300-sw}" height="${400-sw}" ${common} stroke-width="${sw*0.35}"/>${sn}</svg>`;
+    }
+    case 'confetti': {
+      let conf = '';
+      const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f97316'];
+      const rand = (seed) => { const x = Math.sin(seed) * 10000; return x - Math.floor(x); };
+      let k = 1;
+      for (let x = 15; x < 290; x += 18) {
+        const rr = rand(k++) * 10 - 5;
+        const col = colors[Math.floor(rand(k++) * colors.length)];
+        conf += `<rect x="${x}" y="${8 + Math.random()*8}" width="6" height="4" fill="${col}" opacity="0.85" transform="rotate(${rr} ${x+3} ${10})"/>`;
+        conf += `<rect x="${x}" y="${384 - Math.random()*8}" width="6" height="4" fill="${col}" opacity="0.85" transform="rotate(${-rr} ${x+3} ${386})"/>`;
+      }
+      for (let y = 40; y < 370; y += 18) {
+        const rr = rand(k++) * 10 - 5;
+        const col = colors[Math.floor(rand(k++) * colors.length)];
+        conf += `<circle cx="${10 + Math.random()*6}" cy="${y}" r="2.5" fill="${col}" opacity="0.85"/>`;
+        conf += `<circle cx="${288 - Math.random()*6}" cy="${y}" r="2.5" fill="${col}" opacity="0.85"/>`;
+      }
+      return `<svg viewBox="0 0 300 400" preserveAspectRatio="none">${conf}</svg>`;
+    }
+    default: return '';
+  }
+}
+</script><script>
+/* ============================================================
+   ГЛОБАЛЬНОЕ СОСТОЯНИЕ
+   ============================================================ */
+let state = {
+  cards: [],
+  pageBg: '#ffffff',
+  pageFormat: 'A4',
+  orientation: 'portrait',
+  grid: '2x2',
+  marginMm: 6,
+  gapMm: 4,
+  previewIndex: 0,
+  openCardIndex: -1,
+  openTab: 'content'
+};
+
+let undoStack = [];
+const MAX_UNDO = 30;
+
+function saveUndoState() {
+  undoStack.push(JSON.stringify(state));
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+}
+
+function undoAction() {
+  if (undoStack.length === 0) { showToast('Нечего отменять', 'error'); return; }
+  const prevState = JSON.parse(undoStack.pop());
+  Object.assign(state, prevState);
+  renderCardsAccordion();
+  renderSettings();
+  renderPreview();
+  showToast('↩️ Действие отменено', 'success');
+}
+
+/* ============================================================
+   УТИЛИТЫ
+   ============================================================ */
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast ' + type;
+  setTimeout(() => t.classList.add('show'), 10);
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+let panelLeftOpen = false;
+let panelRightOpen = false;
+
+function togglePanel(side) {
+  if (side === 'left') {
+    panelLeftOpen = !panelLeftOpen;
+    document.getElementById('panelLeft').classList.toggle('active', panelLeftOpen);
+    document.getElementById('btnToggleLeft').classList.toggle('active', panelLeftOpen);
+  } else {
+    panelRightOpen = !panelRightOpen;
+    document.getElementById('panelRight').classList.toggle('active', panelRightOpen);
+    document.getElementById('btnToggleRight').classList.toggle('active', panelRightOpen);
+  }
+  const ws = document.getElementById('mainWorkspace');
+  ws.className = 'workspace';
+  if (window.innerWidth > 1024) {
+    if (panelLeftOpen && panelRightOpen) ws.classList.add('panel-both-open');
+    else if (panelLeftOpen) ws.classList.add('panel-left-open');
+    else if (panelRightOpen) ws.classList.add('panel-right-open');
+  }
+}
+
+function newCard() {
+  return {
+    image: '', text: '', textColor: '#1e293b', caption: '', captionColor: '#1e293b',
+    captionOffset: 2,
+    listName: '',
+    bgColor: '#bcd7fb', bgColor2: '#ffffff', useGrad: false, gradientAngle: 180,
+    headerHeight: 8, footerHeight: 15, useCustomPanelsBg: false, panelBgColor: '#ffffff',
+    imgPad: 4, textPad: 5, useWhiteBgImage: true,
+    fontFamily: 'Segoe UI', fontWeight: '900', fontStyle: 'normal',
+    baseFontSize: 80, captionFontSize: 22, textPosition: 'bottom',
+    frameStyle: 'solid', customFrame: '', customFrameScale: 100, customFrameRotate: 0, borderColor: '#2563eb', borderWidth: 1.5, borderRadius: 3,
+    frameScale: 100, frameOffset: 0,
+    imgQuality: 800,
+    manualLineBreaks: false
+  };
+}
+
+function fitTextToBox(el, maxW, maxH, minPx, maxPx) {
+  if (!el) return minPx;
+  el.style.whiteSpace = 'normal'; el.style.wordBreak = 'normal'; el.style.overflowWrap = 'normal'; el.style.hyphens = 'none';
+  const test = (size) => { el.style.fontSize = size + 'px'; return el.scrollWidth <= maxW + 0.5 && el.scrollHeight <= maxH + 0.5; };
+  const words = (el.textContent || '').trim().split(/\s+/).filter(Boolean);
+  if (words.length === 1) { el.style.fontSize = minPx + 'px'; if (el.scrollWidth > maxW + 0.5) { el.style.wordBreak = 'break-all'; el.style.overflowWrap = 'anywhere'; } }
+  let lo = minPx, hi = maxPx, best = minPx;
+  while (lo <= hi) { const mid = Math.floor((lo + hi) / 2); if (test(mid)) { best = mid; lo = mid + 1; } else { hi = mid - 1; } }
+  el.style.fontSize = best + 'px';
+  return best;
+}
+
+const loadedFonts = new Set();
+function ensureFontLoaded(fontName) {
+  if (!GOOGLE_FONTS.includes(fontName)) return;
+  if (loadedFonts.has(fontName)) return;
+  loadedFonts.add(fontName);
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(fontName).replace(/%20/g, '+') + ':wght@400;700;900&display=swap';
+  document.head.appendChild(link);
+}
+
+/* ============================================================
+   СБОРКА КАРТОЧКИ
+   ============================================================ */
+function buildCardContent(card, scale = 1, hoverFont = null, hoverFrame = null, forceWeight = null) {
+  const container = document.createElement('div');
+  container.className = 'card-inner';
+  const getVal = (val, def) => (val !== undefined && val !== null) ? val : def;
+  const fontFamily = hoverFont ? hoverFont : getVal(card.fontFamily, 'Segoe UI');
+  const fontWeight = forceWeight ? forceWeight : getVal(card.fontWeight, '900');
+  const fontStyle = getVal(card.fontStyle, 'normal');
+  const baseSize = getVal(card.baseFontSize, 80) * scale;
+  const capSize = getVal(card.captionFontSize, 22) * scale;
+  const textPos = getVal(card.textPosition, 'bottom');
+  const textColor = getVal(card.textColor, '#1e293b');
+  const captionColor = getVal(card.captionColor, textColor);
+  const headerH = getVal(card.headerHeight, 8);
+  const footerH = getVal(card.footerHeight, 15);
+  const imgPad = getVal(card.imgPad, 4);
+  const txtPad = getVal(card.textPad, 5);
+  const frameStyle = getVal(card.frameStyle, 'solid');
+  const borderColor = getVal(card.borderColor, '#2563eb');
+  const borderWidth = getVal(card.borderWidth, 1.5);
+  const borderRadius = getVal(card.borderRadius, 3);
+  const panelBg = card.useCustomPanelsBg ? card.panelBgColor : 'transparent';
+  const manualBreaks = getVal(card.manualLineBreaks, false);
+  const captionOffset = getVal(card.captionOffset, 2);
+  const customFrameScale = getVal(card.customFrameScale, 100);
+  const customFrameRotate = getVal(card.customFrameRotate, 0);
+  
+  // Новые параметры для встроенных рамок
+  const frameScale = getVal(card.frameScale, 100);
+  const frameOffset = getVal(card.frameOffset, 0);
+
+  container.style.fontFamily = "'" + fontFamily + "', 'Segoe UI', sans-serif";
+  container.style.fontWeight = fontWeight + ' !important';
+  container.style.fontStyle = fontStyle;
+  container.style.borderRadius = (borderRadius * scale) + 'px';
+  container.style.overflow = 'hidden';
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column';
+
+  const c1 = getVal(card.bgColor, '#bcd7fb');
+  const c2 = getVal(card.bgColor2, '#ffffff');
+  const isGrad = getVal(card.useGrad, false);
+  if (isGrad) container.style.background = 'linear-gradient(' + getVal(card.gradientAngle, 180) + 'deg, ' + c1 + ', ' + c2 + ')';
+  else container.style.background = c1;
+
+  // --- ВЕРХНЯЯ ПЛАШКА ---
+  const hasTopText = (textPos === 'top' && card.text);
+  if (headerH > 0 || hasTopText) {
+    const topPanel = document.createElement('div');
+    topPanel.className = 'ci-top-panel';
+    topPanel.style.background = panelBg;
+    topPanel.style.flexShrink = '0';
+    topPanel.style.padding = '1% ' + txtPad + '%';
+    
+    if (hasTopText) {
+      topPanel.style.minHeight = headerH + '%';
+      if (manualBreaks) { topPanel.innerHTML = escapeHtml(card.text).replace(/\n/g, '<br>'); topPanel.style.whiteSpace = 'pre-wrap'; }
+      else { topPanel.textContent = card.text; }
+      topPanel.style.color = textColor;
+      topPanel.style.fontSize = baseSize + 'px';
+      topPanel.style.fontWeight = fontWeight;
+    } else {
+      topPanel.style.height = headerH + '%';
+    }
+    container.appendChild(topPanel);
+  }
+
+  // --- ЗОНА КАРТИНКИ ---
+  const imgArea = document.createElement('div');
+  imgArea.className = 'ci-img-area';
+  imgArea.style.flex = '1'; 
+  imgArea.style.minHeight = '0'; 
+  imgArea.style.padding = imgPad + '%';
+  imgArea.style.background = getVal(card.useWhiteBgImage, true) ? '#ffffff' : 'transparent';
+  imgArea.style.display = 'flex';
+  imgArea.style.alignItems = 'center';
+  imgArea.style.justifyContent = 'center';
+  imgArea.style.position = 'relative';
+
+  if (card.image) {
+    const img = document.createElement('img');
+    img.src = card.image;
+    img.decoding = 'sync';
+    img.loading = 'eager';
+    img.style.width = '100%'; 
+    img.style.height = '100%'; 
+    img.style.objectFit = 'contain';
+    imgArea.appendChild(img);
+  } else if (card.text && textPos === 'overlay') {
+    const overlay = document.createElement('div');
+    overlay.className = 'ci-overlay-text';
+    if (manualBreaks) { overlay.innerHTML = escapeHtml(card.text).replace(/\n/g, '<br>'); overlay.style.whiteSpace = 'pre-wrap'; }
+    else { overlay.textContent = card.text; }
+    overlay.style.color = textColor;
+    overlay.style.fontSize = baseSize + 'px';
+    overlay.style.textAlign = 'center'; 
+    overlay.style.lineHeight = '1.1';
+    overlay.style.padding = '0 ' + txtPad + '%';
+    overlay.style.wordBreak = 'break-word';
+    overlay.style.fontWeight = fontWeight;
+    imgArea.appendChild(overlay);
+  }
+  container.appendChild(imgArea);
+
+  // --- НИЖНЯЯ ПЛАШКА ---
+  const hasBottomText = (textPos === 'bottom' && card.text);
+  if (footerH > 0 || hasBottomText) {
+    const bottomPanel = document.createElement('div');
+    bottomPanel.className = 'ci-bottom-panel';
+    bottomPanel.style.background = panelBg;
+    bottomPanel.style.flexShrink = '0';
+    bottomPanel.style.padding = '1% ' + txtPad + '%';
+    
+    if (hasBottomText) {
+      bottomPanel.style.minHeight = footerH + '%';
+      if (manualBreaks) { bottomPanel.innerHTML = escapeHtml(card.text).replace(/\n/g, '<br>'); bottomPanel.style.whiteSpace = 'pre-wrap'; }
+      else { bottomPanel.textContent = card.text; }
+      bottomPanel.style.color = textColor;
+      bottomPanel.style.fontSize = baseSize + 'px';
+      bottomPanel.style.fontWeight = fontWeight;
+    } else {
+      bottomPanel.style.height = footerH + '%';
+    }
+    container.appendChild(bottomPanel);
+  }
+
+  // --- ПОДПИСЬ ---
+  if (card.caption) {
+    const captionDiv = document.createElement('div');
+    captionDiv.style.position = 'absolute';
+    captionDiv.style.left = '0';
+    captionDiv.style.right = '0';
+    captionDiv.style.textAlign = 'center';
+    captionDiv.style.color = captionColor;
+    captionDiv.style.fontSize = capSize + 'px';
+    captionDiv.style.fontWeight = fontWeight;
+    captionDiv.style.zIndex = '20';
+    captionDiv.style.lineHeight = '1.15';
+    captionDiv.style.wordWrap = 'break-word';
+    captionDiv.style.pointerEvents = 'none';
+    captionDiv.style.padding = '0 ' + txtPad + '%';
+    
+    if (textPos === 'top') {
+      captionDiv.style.top = captionOffset + '%';
+    } else if (textPos === 'bottom') {
+      captionDiv.style.bottom = captionOffset + '%';
+    } else {
+      captionDiv.style.top = '50%';
+      captionDiv.style.transform = 'translateY(-50%)';
+    }
+
+    if (manualBreaks) { 
+      captionDiv.innerHTML = escapeHtml(card.caption).replace(/\n/g, '<br>'); 
+      captionDiv.style.whiteSpace = 'pre-wrap'; 
+    } else { 
+      captionDiv.textContent = card.caption; 
+    }
+    
+    container.appendChild(captionDiv);
+  }
+
+  // --- РАМКА ---
+  const finalFrameStyle = hoverFrame !== null ? hoverFrame : frameStyle;
+  if (finalFrameStyle && finalFrameStyle !== 'none') {
+    const layer = document.createElement('div');
+    layer.className = 'ci-frame';
+    layer.style.position = 'absolute'; 
+    layer.style.inset = '0'; 
+    layer.style.pointerEvents = 'none'; 
+    layer.style.zIndex = '10';
+    
+    if (finalFrameStyle === 'custom' && card.customFrame) {
+      layer.innerHTML = '<img src="' + escapeHtml(card.customFrame) + '" style="width:100%;height:100%;object-fit:fill;display:block; transform: rotate(' + customFrameRotate + 'deg) scale(' + (customFrameScale / 100) + '); transition: transform 0.1s;">';
+    } else if (finalFrameStyle === 'dots') {
+      // Применяем масштаб и сдвиг к CSS-рамке (точки)
+      layer.style.border = Math.max(2, borderWidth * 5) + 'px dotted ' + borderColor;
+      layer.style.borderRadius = (borderRadius * scale) + 'px';
+      layer.style.transform = `scale(${frameScale / 100}) translate(${frameOffset}px, ${frameOffset}px)`;
+      layer.style.transition = 'transform 0.1s';
+    } else {
+      // Применяем масштаб и сдвиг к SVG-рамкам
+      const svgString = getFrameSVG(finalFrameStyle, borderColor, borderWidth * 5);
+      layer.innerHTML = `<div style="width:100%;height:100%;transform:scale(${frameScale/100}) translate(${frameOffset}px, ${frameOffset}px); transition: transform 0.1s;">${svgString}</div>`;
+    }
+    container.appendChild(layer);
+  }
+  return container;
+}
+</script><script>
+/* ============================================================
+   АККОРДЕОН КАРТОЧЕК
+   ============================================================ */
+
+function makeCustomSelect(id, items, currentValue, onChangeFunc, hoverType = null) {
+  let optionsHtml = '';
+  let displayText = 'Выбрать...';
+  
+  let hoverAttr = '';
+  if (hoverType === 'font') {
+    hoverAttr = `onmouseover="hoverFontPreview(this.dataset.val)" onmouseout="resetHoverPreview()"`;
+  } else if (hoverType === 'frame') {
+    hoverAttr = `onmouseover="hoverFramePreview(this.dataset.val)" onmouseout="resetHoverPreview()"`;
+  } else if (hoverType === 'weight') {
+    hoverAttr = `onmouseover="hoverWeightPreview(this.dataset.val)" onmouseout="resetHoverPreview()"`;
+  }
+
+  items.forEach(item => {
+    const isSel = currentValue === item.value;
+    if (isSel) displayText = item.label;
+    
+    optionsHtml += `<div class="custom-option ${isSel ? 'selected' : ''}" data-val="${item.value}" ${hoverAttr} onclick="selectCustomOption('${id}', '${item.value}', '${item.label.replace(/'/g, "\\'")}'); ${onChangeFunc}('${item.value}')">${item.label}</div>`;
+  });
+  
+  return `
+    <div class="custom-select-wrapper" id="wrapper-${id}">
+      <div class="custom-select-display" onclick="toggleCustomSelect('${id}', event)">
+        <span id="display-${id}">${displayText}</span>
+      </div>
+      <div class="custom-select-dropdown" id="dropdown-${id}">
+        ${optionsHtml}
+      </div>
+    </div>
+  `;
+}
+
+window.toggleCustomSelect = function(id, event) {
+  event.stopPropagation();
+  document.querySelectorAll('.custom-select-dropdown').forEach(d => {
+    if (d.id !== 'dropdown-' + id) d.classList.remove('active');
+  });
+  const dropdown = document.getElementById('dropdown-' + id);
+  if (dropdown) dropdown.classList.toggle('active');
+};
+
+window.selectCustomOption = function(id, value, label) {
+  const display = document.getElementById('display-' + id);
+  if (display) display.textContent = label;
+  
+  const dropdown = document.getElementById('dropdown-' + id);
+  if (dropdown) {
+    dropdown.classList.remove('active');
+    dropdown.querySelectorAll('.custom-option').forEach(opt => {
+      opt.classList.remove('selected');
+      if (opt.dataset.val === value) opt.classList.add('selected');
+    });
+  }
+};
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.custom-select-wrapper')) {
+    document.querySelectorAll('.custom-select-dropdown').forEach(d => d.classList.remove('active'));
+  }
+});
+
+function renderCardsAccordion() {
+  const container = document.getElementById('cardsAccordion');
+  container.innerHTML = '';
+  if (state.cards.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;">Нет карточек.</div>';
+    return;
+  }
+
+  state.cards.forEach((card, i) => {
+    const item = document.createElement('div');
+    item.className = 'acc-item';
+    item.setAttribute('draggable', 'true');
+    item.dataset.index = i;
+
+    const header = document.createElement('div');
+    header.className = 'acc-header';
+    
+    if (i === state.openCardIndex) header.classList.add('active');
+
+    const displayTitle = card.listName || card.text || 'Без текста';
+
+    header.innerHTML = `
+      <div style="display:flex; align-items:center; gap:8px; flex:1; overflow:hidden;">
+        <span style="cursor:grab; color:#94a3b8; font-size:16px;" title="Перетащить">☰</span>
+        <input type="text" value="${escapeHtml(displayTitle)}" 
+               style="border:1px solid transparent; background:transparent; font-weight:700; color:#334155; padding:4px; border-radius:4px; width:100%; outline:none; transition: all 0.2s;" 
+               onfocus="this.style.borderColor='#cbd5e1'; this.style.background='#fff';" 
+               onblur="this.style.borderColor='transparent'; this.style.background='transparent'; this.value = this.value.trim() || 'Без текста';"
+               onchange="updateCardName(${i}, this.value)"
+               onclick="event.stopPropagation();"
+               onkeydown="if(event.key==='Enter'){ this.blur(); }">
+      </div>
+      <div style="display:flex; align-items:center; gap:4px;">
+        <button class="mini-btn copy" style="padding: 4px 8px; font-size: 14px; border:none; box-shadow:none; background:transparent;" onclick="event.stopPropagation(); copyCard(${i});" title="Копировать карточку">📄</button>
+        <button class="mini-btn delete" style="padding: 4px 8px; font-size: 14px; border:none; box-shadow:none; background:transparent;" onclick="event.stopPropagation(); deleteCard(${i});" title="Удалить карточку">🗑</button>
+        <button class="arrow-btn" style="cursor:pointer; padding:0 5px; color:#94a3b8; background:none; border:none; font-size:16px; transition: transform 0.2s;" title="Развернуть/Свернуть">▼</button>
+      </div>
+    `;
+
+    header.onclick = (e) => {
+      if (e.target.closest('button') || e.target.tagName === 'INPUT' || e.target.closest('span[title="Перетащить"]')) return;
+      previewCard(i);
+    };
+
+    const arrowBtn = header.querySelector('.arrow-btn');
+    arrowBtn.onclick = (e) => {
+      e.stopPropagation();
+      const content = item.querySelector('.acc-content');
+      const isActive = content.classList.contains('active');
+      
+      container.querySelectorAll('.acc-content').forEach(c => c.classList.remove('active'));
+      container.querySelectorAll('.acc-header').forEach(h => h.classList.remove('active'));
+      container.querySelectorAll('.arrow-btn').forEach(b => b.style.transform = 'rotate(0deg)');
+      
+      if (!isActive) {
+        content.classList.add('active');
+        header.classList.add('active');
+        arrowBtn.style.transform = 'rotate(180deg)';
+        state.openCardIndex = i;
+        previewCard(i);
+      } else {
+        state.openCardIndex = -1;
+      }
+    };
+    item.appendChild(header);
+
+    const content = document.createElement('div');
+    content.className = 'acc-content';
+    if (i === state.openCardIndex) content.classList.add('active');
+
+    const systemFontsList = SYSTEM_FONTS.map(f => ({ value: f, label: f }));
+    const googleFontsList = GOOGLE_FONTS.map(f => ({ value: f, label: f + ' (G)' }));
+    const customFontsList = Object.keys(customFonts).map(f => ({ value: f, label: f }));
+    const allFonts = [...systemFontsList, ...googleFontsList, ...customFontsList];
+    
+    const weightList = [{v:'400',l:'Обычный'},{v:'700',l:'Жирный'},{v:'900',l:'Очень жирный'}].map(o => ({value: o.v, label: o.l}));
+    const styleList = [{v:'normal',l:'Обычный'},{v:'italic',l:'Курсив'}].map(o => ({value: o.v, label: o.l}));
+    const posList = [{v:'overlay',l:'Поверх картинки'},{v:'bottom',l:'Снизу'},{v:'top',l:'Сверху'}].map(o => ({value: o.v, label: o.l}));
+    const frameList = FRAME_STYLES.map(f => ({ value: f.id, label: f.label }));
+
+    const isStyleTab = state.openTab === 'style';
+
+    content.innerHTML =
+      '<div class="tabs">' +
+        '<button class="tab-btn' + (isStyleTab ? '' : ' active') + '" onclick="switchTab(this, \'content-' + i + '\')">📝 Контент</button>' +
+        '<button class="tab-btn' + (isStyleTab ? ' active' : '') + '" onclick="switchTab(this, \'style-' + i + '\')">🎨 Стиль</button>' +
+      '</div>' +
+      '<div class="tab-content' + (isStyleTab ? '' : ' active') + '" id="content-' + i + '">' +
+       '<div class="field-row"><label>Название</label><input type="text" placeholder="Для списка" data-name-input="' + i + '" draggable="false" value="' + escapeHtml(card.listName || '') + '" oninput="updateCard(' + i + ', \'listName\', this.value)"></div>' +
+        '<div class="field-row" style="align-items:flex-start;"><label style="padding-top:8px;">Текст</label><textarea rows="2" placeholder="Введите текст"draggable="false" oninput="updateCard(' + i + ', \'text\', this.value)">' + escapeHtml(card.text || '') + '</textarea><input type="color" value="' + (card.textColor || '#1e293b') + '" oninput="updateCard(' + i + ', \'textColor\', this.value)"></div>' +
+        '<div class="field-row" style="margin-top:-6px; margin-bottom:10px;">' +
+          '<label style="min-width:auto; cursor:pointer; display:flex; align-items:center; gap:6px; font-size:12px; color:#475569; text-transform:none; font-weight:600;">' +
+            '<input type="checkbox" ' + (card.manualLineBreaks ? 'checked' : '') + ' onchange="updateCard(' + i + ', \'manualLineBreaks\', this.checked)"> Ручной перенос строк' +
+          '</label>' +
+        '</div>' +
+               '<div class="field-row"><label>Подпись</label><input type="text" value="' + escapeHtml(card.caption || '') + '" draggable="false" oninput="updateCard(' + i + ', \'caption\', this.value)"><input type="color" value="' + (card.captionColor || '#1e293b') + '" oninput="updateCard(' + i + ', \'captionColor\', this.value)"></div>' +
+        '<div class="field-row"><label>Ссылка</label><input type="url" placeholder="URL" data-url-input="' + i + '" draggable="false" onkeydown="if(event.key===\'Enter\'){applyUrl(' + i + ', this);}"><button class="mini-btn" onclick="applyUrl(' + i + ', this.previousElementSibling)">OK</button></div>' +
+        '<div class="field-row">' +
+          '<button class="mini-btn upload">📁 Файл<input type="file" accept="image/*" onchange="uploadImage(' + i + ', event)"></button>' +
+          '<button class="mini-btn copy" onclick="copyCard(' + i + ')">📄 Копировать</button>' +
+          '<button class="mini-btn clear" style="background:#fef3c7; color:#92400e;" onclick="clearImage(' + i + ')">❌ Картинка</button>' +
+          '<button class="mini-btn delete" onclick="deleteCard(' + i + ')">🗑 Удалить</button>' +
+        '</div>' +
+        (card.image ? '<div class="field-row" style="margin-bottom:10px;"><label>Фото</label><img src="' + card.image + '" style="max-height:50px; max-width:100px; object-fit:contain; border-radius:4px; border:1px solid #cbd5e1; padding:2px; background:#fff;"></div>' : '') +
+        '<div class="field-row" style="margin-top:10px;"><label>Кач-во фото</label><select style="flex:1; padding:6px;" onchange="updateCard(' + i + ', \'imgQuality\', +this.value)">' +
+          '<option value="600"' + (card.imgQuality === 600 ? ' selected' : '') + '>Эконом (600px)</option>' +
+          '<option value="800"' + (card.imgQuality === 800 || !card.imgQuality ? ' selected' : '') + '>Стандарт (800px)</option>' +
+          '<option value="1200"' + (card.imgQuality === 1200 ? ' selected' : '') + '>Высокое (1200px)</option>' +
+          '<option value="1600"' + (card.imgQuality === 1600 ? ' selected' : '') + '>Максимум (1600px)</option>' +
+        '</select></div>' +
+      '</div>';           // ПРОДОЛЖЕНИЕ АККОРДЕОНА (ВКЛАДКА СТИЛЬ)
+      content.innerHTML +=
+      '<div class="tab-content' + (isStyleTab ? ' active' : '') + '" id="style-' + i + '">' +
+        // --- ОБЩИЙ ФОН ---
+        '<div class="field-row block-bg" style="background:#fee2e2; padding:10px; border-radius:8px; margin-bottom:10px; flex-wrap:wrap; border:1px solid #fecaca;">' +
+          '<label style="width:100%; margin-bottom:4px; color:#b91c1c;">🎨 Общий фон</label>' +
+          '<div style="display:flex; gap:8px; align-items:center; width:100%; margin-bottom:8px;">' +
+            '<span style="font-size:11px; width:45px;">Цвет 1</span><input type="color" value="' + (card.bgColor || '#bcd7fb') + '" oninput="updateCard(' + i + ', \'bgColor\', this.value)">' +
+            '<span style="font-size:11px; width:45px; margin-left:10px;">Цвет 2</span><input type="color" value="' + (card.bgColor2 || '#ffffff') + '" oninput="updateCard(' + i + ', \'bgColor2\', this.value)">' +
+          '</div>' +
+          '<label style="font-size:12px; display:flex; align-items:center; gap:6px; cursor:pointer; margin-bottom:8px;">' +
+            '<input type="checkbox" ' + (card.useGrad ? 'checked' : '') + ' onchange="updateCard(' + i + ', \'useGrad\', this.checked)"> Использовать градиент' +
+          '</label>' +
+          (card.useGrad ? 
+            '<div class="field-row slider-bg" style="margin-bottom:8px;">' +
+              '<label style="min-width:40px;">Угол</label>' +
+              '<input type="range" min="0" max="360" value="' + (card.gradientAngle || 180) + '" oninput="updateCard(' + i + ', \'gradientAngle\', +this.value); this.nextElementSibling.value = this.value;">' +
+              '<input type="number" class="manual-input" min="0" max="360" value="' + (card.gradientAngle || 180) + '" onchange="updateCard(' + i + ', \'gradientAngle\', +this.value); this.previousElementSibling.value = this.value;">' +
+              '<span style="font-size:11px;">°</span>' +
+            '</div>'
+          : '') +
+          '<div class="field-row" style="margin-bottom:6px; border-top:1px solid #fecaca; padding-top:8px;">' +
+            '<label style="min-width:auto; cursor:pointer; display:flex; align-items:center; gap:6px; font-size:12px;">' +
+              '<input type="checkbox" ' + (card.useWhiteBgImage ? 'checked' : '') + ' onchange="updateCard(' + i + ', \'useWhiteBgImage\', this.checked)"> Белое окно под картинку' +
+            '</label>' +
+          '</div>' +
+          '<div class="field-row" style="margin-bottom:6px;">' +
+            '<label style="min-width:auto; cursor:pointer; display:flex; align-items:center; gap:6px; font-size:12px;">' +
+              '<input type="checkbox" ' + (card.useCustomPanelsBg ? 'checked' : '') + ' onchange="updateCard(' + i + ', \'useCustomPanelsBg\', this.checked)"> Свой цвет плашек' +
+            '</label>' +
+          '</div>' +
+          (card.useCustomPanelsBg ? 
+            '<div class="field-row" style="margin-bottom:0;"><label>Цвет плашек</label><input type="color" value="' + (card.panelBgColor || '#ffffff') + '" oninput="updateCard(' + i + ', \'panelBgColor\', this.value)"></div>'
+          : '') +
+        '</div>' +
+        // --- РАМКА ---
+        '<div class="field-row block-frame" style="background:#dbeafe; padding:10px; border-radius:8px; margin-bottom:10px; flex-wrap:wrap; border:1px solid #bfdbfe;">' +
+          '<label style="width:100%; margin-bottom:4px; color:#1d4ed8;">🖼 Рамка</label>' +
+          '<div class="field-row" style="margin-bottom:6px;"><label>Стиль</label>' + makeCustomSelect('frame-' + i, frameList, card.frameStyle, 'updateCard.bind(null, ' + i + ', \'frameStyle\')', 'frame') + '</div>' +
+          
+          (card.frameStyle !== 'none' && card.frameStyle !== 'custom' ? 
+            '<div class="field-row slider-frame" style="margin-bottom:6px;">' +
+              '<label>Масштаб</label>' +
+              '<input type="range" min="50" max="150" value="' + (card.frameScale || 100) + '" oninput="updateCard(' + i + ', \'frameScale\', +this.value); this.nextElementSibling.value = this.value;">' +
+              '<input type="number" class="manual-input" min="50" max="150" value="' + (card.frameScale || 100) + '" oninput="updateCard(' + i + ', \'frameScale\', +this.value); this.previousElementSibling.value = this.value;">' +
+              '<span style="font-size:11px;">%</span>' +
+            '</div>' +
+            '<div class="field-row slider-frame" style="margin-bottom:6px;">' +
+              '<label>Сдвиг</label>' +
+              '<input type="range" min="-20" max="20" value="' + (card.frameOffset || 0) + '" oninput="updateCard(' + i + ', \'frameOffset\', +this.value); this.nextElementSibling.value = this.value;">' +
+              '<input type="number" class="manual-input" min="-20" max="20" value="' + (card.frameOffset || 0) + '" oninput="updateCard(' + i + ', \'frameOffset\', +this.value); this.previousElementSibling.value = this.value;">' +
+              '<span style="font-size:11px;">px</span>' +
+            '</div>'
+          : '') +
+          
+          (card.frameStyle === 'custom' ? 
+            '<div class="field-row" style="margin-bottom:6px;"><label>Своя</label><button class="mini-btn upload" style="flex:1;">📁 Загрузить<input type="file" accept="image/*" onchange="uploadCustomFrame(' + i + ', event)"></button></div>' +
+            '<div class="field-row slider-size" style="margin-bottom:6px;">' +
+              '<label>Масштаб</label>' +
+              '<input type="range" min="10" max="200" value="' + (card.customFrameScale || 100) + '" oninput="updateCard(' + i + ', \'customFrameScale\', +this.value); this.nextElementSibling.value = this.value;">' +
+              '<input type="number" class="manual-input" min="10" max="200" value="' + (card.customFrameScale || 100) + '" oninput="updateCard(' + i + ', \'customFrameScale\', +this.value); this.previousElementSibling.value = this.value;">' +
+              '<span style="font-size:11px;">%</span>' +
+            '</div>' +
+            '<div class="field-row slider-size" style="margin-bottom:6px;">' +
+              '<label>Поворот</label>' +
+              '<input type="range" min="-180" max="180" value="' + (card.customFrameRotate || 0) + '" oninput="updateCard(' + i + ', \'customFrameRotate\', +this.value); this.nextElementSibling.value = this.value;">' +
+              '<input type="number" class="manual-input" min="-180" max="180" value="' + (card.customFrameRotate || 0) + '" oninput="updateCard(' + i + ', \'customFrameRotate\', +this.value); this.previousElementSibling.value = this.value;">' +
+              '<span style="font-size:11px;">°</span>' +
+            '</div>'
+          : '') +
+          '<div class="field-row" style="margin-bottom:6px;"><label>Цвет</label><input type="color" value="' + (card.borderColor || '#2563eb') + '" oninput="updateCard(' + i + ', \'borderColor\', this.value)"></div>' +
+          '<div class="field-row slider-frame" style="margin-bottom:6px;">' +
+            '<label>Толщина</label>' +
+            '<input type="range" min="0" max="5" step="0.25" value="' + (card.borderWidth !== undefined ? card.borderWidth : 1.5) + '" oninput="updateCard(' + i + ', \'borderWidth\', +this.value); this.nextElementSibling.value = this.value;">' +
+            '<input type="number" class="manual-input" min="0" max="5" step="0.25" value="' + (card.borderWidth !== undefined ? card.borderWidth : 1.5) + '" onchange="updateCard(' + i + ', \'borderWidth\', +this.value); this.previousElementSibling.value = this.value;">' +
+            '<span style="font-size:11px;">мм</span>' +
+          '</div>' +
+          '<div class="field-row slider-frame" style="margin-bottom:0;">' +
+            '<label>Скругление</label>' +
+            '<input type="range" min="0" max="15" step="0.5" value="' + (card.borderRadius !== undefined ? card.borderRadius : 3) + '" oninput="updateCard(' + i + ', \'borderRadius\', +this.value); this.nextElementSibling.value = this.value;">' +
+            '<input type="number" class="manual-input" min="0" max="15" step="0.5" value="' + (card.borderRadius !== undefined ? card.borderRadius : 3) + '" onchange="updateCard(' + i + ', \'borderRadius\', +this.value); this.previousElementSibling.value = this.value;">' +
+            '<span style="font-size:11px;">мм</span>' +
+          '</div>' +
+        '</div>' +
+        // --- РАЗМЕРЫ ---
+        '<div class="field-row block-size" style="background:#ffedd5; padding:10px; border-radius:8px; margin-bottom:10px; flex-wrap:wrap; border:1px solid #fed7aa;">' +
+          '<label style="width:100%; margin-bottom:4px; color:#c2410c;">📐 Размеры</label>' +
+          '<div class="field-row slider-size" style="margin-bottom:6px;">' +
+            '<label>Верх. плашка</label>' +
+            '<input type="range" min="0" max="30" value="' + (card.headerHeight !== undefined ? card.headerHeight : 8) + '" oninput="updateCard(' + i + ', \'headerHeight\', +this.value); this.nextElementSibling.value = this.value;">' +
+            '<input type="number" class="manual-input" min="0" max="30" value="' + (card.headerHeight !== undefined ? card.headerHeight : 8) + '" onchange="updateCard(' + i + ', \'headerHeight\', +this.value); this.previousElementSibling.value = this.value;">' +
+            '<span style="font-size:11px;">%</span>' +
+          '</div>' +
+          '<div class="field-row slider-size" style="margin-bottom:6px;">' +
+            '<label>Низ. плашка</label>' +
+            '<input type="range" min="0" max="30" value="' + (card.footerHeight !== undefined ? card.footerHeight : 15) + '" oninput="updateCard(' + i + ', \'footerHeight\', +this.value); this.nextElementSibling.value = this.value;">' +
+            '<input type="number" class="manual-input" min="0" max="30" value="' + (card.footerHeight !== undefined ? card.footerHeight : 15) + '" onchange="updateCard(' + i + ', \'footerHeight\', +this.value); this.previousElementSibling.value = this.value;">' +
+            '<span style="font-size:11px;">%</span>' +
+          '</div>' +
+          '<div class="field-row slider-size" style="margin-bottom:6px;">' +
+            '<label>Отступ картинки</label>' +
+            '<input type="range" min="0" max="15" step="0.5" value="' + (card.imgPad !== undefined ? card.imgPad : 4) + '" oninput="updateCard(' + i + ', \'imgPad\', +this.value); this.nextElementSibling.value = this.value;">' +
+            '<input type="number" class="manual-input" min="0" max="15" step="0.5" value="' + (card.imgPad !== undefined ? card.imgPad : 4) + '" onchange="updateCard(' + i + ', \'imgPad\', +this.value); this.previousElementSibling.value = this.value;">' +
+            '<span style="font-size:11px;">%</span>' +
+          '</div>' +
+          '<div class="field-row slider-size" style="margin-bottom:0;">' +
+            '<label>Отступы текста</label>' +
+            '<input type="range" min="0" max="20" step="0.5" value="' + (card.textPad !== undefined ? card.textPad : 5) + '" oninput="updateCard(' + i + ', \'textPad\', +this.value); this.nextElementSibling.value = this.value;">' +
+            '<input type="number" class="manual-input" min="0" max="20" step="0.5" value="' + (card.textPad !== undefined ? card.textPad : 5) + '" onchange="updateCard(' + i + ', \'textPad\', +this.value); this.previousElementSibling.value = this.value;">' +
+            '<span style="font-size:11px;">%</span>' +
+          '</div>' +
+        '</div>' +
+        // --- ШРИФТ ---
+        '<div class="field-row block-font" style="background:#dcfce7; padding:10px; border-radius:8px; margin-bottom:10px; flex-wrap:wrap; border:1px solid #bbf7d0;">' +
+          '<label style="width:100%; margin-bottom:4px; color:#15803d;">🔤 Шрифт</label>' +
+          '<div class="field-row" style="margin-bottom:6px;"><label>Выбор</label>' + makeCustomSelect('font-' + i, allFonts, card.fontFamily, 'updateCard.bind(null, ' + i + ', \'fontFamily\')', 'font') + '</div>' +
+          '<div class="field-row" style="margin-bottom:6px;">' +
+            '<button class="mini-btn upload" style="flex:1;">📁 Свой шрифт (.ttf / .otf)<input type="file" accept=".ttf,.otf,.woff,.woff2" onchange="uploadCustomFont(' + i + ', event)"></button>' +
+          '</div>' +
+          '<div class="field-row" style="margin-bottom:6px;"><label>Жирность</label>' + makeCustomSelect('weight-' + i, weightList, card.fontWeight, 'updateCard.bind(null, ' + i + ', \'fontWeight\')', 'weight') + '</div>' +
+          '<div class="field-row" style="margin-bottom:6px;"><label>Стиль</label>' + makeCustomSelect('style-' + i, styleList, card.fontStyle, 'updateCard.bind(null, ' + i + ', \'fontStyle\')') + '</div>' +
+          '<div class="field-row" style="margin-bottom:6px;"><label>Позиция</label>' + makeCustomSelect('pos-' + i, posList, card.textPosition, 'updateCard.bind(null, ' + i + ', \'textPosition\')') + '</div>' +
+          '<div class="field-row" style="margin-bottom:6px;"><label>Цвет текста</label><input type="color" value="' + (card.textColor || '#1e293b') + '" oninput="updateCard(' + i + ', \'textColor\', this.value)"></div>' +
+          '<div class="field-row" style="margin-bottom:6px;"><label>Цвет подписи</label><input type="color" value="' + (card.captionColor || card.textColor || '#1e293b') + '" oninput="updateCard(' + i + ', \'captionColor\', this.value)"></div>' +
+          '<div class="field-row slider-size" style="margin-bottom:6px;">' +
+            '<label>Отступ подписи</label>' +
+            '<input type="range" min="0" max="50" value="' + (card.captionOffset !== undefined ? card.captionOffset : 2) + '" oninput="updateCard(' + i + ', \'captionOffset\', +this.value); this.nextElementSibling.value = this.value;">' +
+            '<input type="number" class="manual-input" min="0" max="50" value="' + (card.captionOffset !== undefined ? card.captionOffset : 2) + '" onchange="updateCard(' + i + ', \'captionOffset\', +this.value); this.previousElementSibling.value = this.value;">' +
+            '<span style="font-size:11px;">%</span>' +
+          '</div>' +
+          '<div class="field-row slider-font" style="margin-bottom:6px;">' +
+            '<label>Размер текста</label>' +
+            '<input type="range" min="8" max="300" value="' + (card.baseFontSize !== undefined ? card.baseFontSize : 80) + '" oninput="updateCard(' + i + ', \'baseFontSize\', +this.value); this.nextElementSibling.value = this.value;">' +
+            '<input type="number" class="manual-input" min="8" max="300" value="' + (card.baseFontSize !== undefined ? card.baseFontSize : 80) + '" onchange="updateCard(' + i + ', \'baseFontSize\', +this.value); this.previousElementSibling.value = this.value;">' +
+            '<span style="font-size:11px;">px</span>' +
+          '</div>' +
+          '<div class="field-row slider-font" style="margin-bottom:6px;">' +
+            '<label>Размер подписи</label>' +
+            '<input type="range" min="6" max="120" value="' + (card.captionFontSize !== undefined ? card.captionFontSize : 22) + '" oninput="updateCard(' + i + ', \'captionFontSize\', +this.value); this.nextElementSibling.value = this.value;">' +
+            '<input type="number" class="manual-input" min="6" max="120" value="' + (card.captionFontSize !== undefined ? card.captionFontSize : 22) + '" onchange="updateCard(' + i + ', \'captionFontSize\', +this.value); this.previousElementSibling.value = this.value;">' +
+            '<span style="font-size:11px;">px</span>' +
+          '</div>' +
+        '</div>' +
+        '<button class="btn btn-apply-all" onclick="applyStyleToAll(' + i + ')">✨ Применить стиль ко всем</button>' +
+      '</div>';
+    item.appendChild(content);
+    container.appendChild(item);
+  });
+}
+</script><script>
+/* ============================================================
+   ДЕЙСТВИЯ С КАРТОЧКАМИ
+   ============================================================ */
+function applyStyleToAll(sourceIndex) {
+  if (!confirm('Применить ВЕСЬ стиль (фон, градиент, рамки, шрифты, цвета, отступы) ко ВСЕМ остальным карточкам?\n\nВНИМАНИЕ: Картинки и сами тексты подписей останутся своими!')) return;
+  
+  saveUndoState();
+  const source = state.cards[sourceIndex];
+  
+  const excludeKeys = [
+    'image', 'text', 'caption', 'listName', 'textColor', 'imgQuality', 'manualLineBreaks'
+  ];
+  
+  state.cards.forEach((card, i) => {
+    if (i === sourceIndex) return;
+    for (let key in source) {
+      if (!excludeKeys.includes(key)) {
+        card[key] = JSON.parse(JSON.stringify(source[key]));
+      }
+    }
+  });
+
+  renderCardsAccordion();
+  renderSettings();
+  renderPreview(true);
+  showToast('✨ Стиль применён! Картинки и подписи остались прежними.', 'success');
+}
+
+function updateCard(i, field, value) {
+  if (!state.cards[i]) return;
+  if (!updateCard._isSliding) saveUndoState();
+  
+  state.cards[i][field] = value;
+  
+  if (i === state.previewIndex) {
+    renderPreview(true);
+  }
+  
+  if (field === 'listName') {
+    const headerInput = document.querySelector(`#cardsAccordion .acc-item[data-index="${i}"] .acc-header input`);
+    if (headerInput) {
+      headerInput.value = value || 'Без текста';
+    }
+  }
+  
+  // Если меняем стиль рамки, нужно перерисовать интерфейс, чтобы показать/скрыть ползунки
+  if (field === 'frameStyle') {
+    renderCardsAccordion();
+  }
+}
+
+document.addEventListener('mousedown', (e) => { if (e.target.type === 'range') updateCard._isSliding = true; });
+document.addEventListener('mouseup', () => updateCard._isSliding = false);
+document.addEventListener('touchstart', (e) => { if (e.target.type === 'range') updateCard._isSliding = true; }, {passive: true});
+document.addEventListener('touchend', () => updateCard._isSliding = false);
+
+function switchTab(btn, tabId) {
+  const tabs = btn.parentElement.querySelectorAll('.tab-btn');
+  tabs.forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  const contents = btn.closest('.acc-content').querySelectorAll('.tab-content');
+  contents.forEach(c => c.classList.remove('active'));
+  const targetContent = document.getElementById(tabId);
+  if (targetContent) targetContent.classList.add('active');
+  state.openTab = tabId.startsWith('style-') ? 'style' : 'content';
+}
+
+function addCard() {
+  saveUndoState();
+  state.cards.push(newCard());
+  state.previewIndex = state.cards.length - 1;
+  state.openCardIndex = state.cards.length - 1;
+  renderCardsAccordion(); renderPreview();
+  setTimeout(() => {
+    const items = document.querySelectorAll('#cardsAccordion .acc-item');
+    if (items.length) items[items.length - 1].scrollIntoView({ behavior: 'smooth' });
+  }, 100);
+}
+
+function copyCard(i) {
+  if (!state.cards[i]) return;
+  saveUndoState();
+  const original = state.cards[i];
+  const copy = JSON.parse(JSON.stringify(original));
+  copy.listName = (copy.listName || copy.text || 'Без текста') + ' (копия)';
+  state.cards.splice(i + 1, 0, copy);
+  state.previewIndex = i + 1;
+  renderCardsAccordion(); renderPreview();
+  showToast('📄 Карточка скопирована', 'success');
+}
+
+function previewCard(i) {
+  state.previewIndex = i;
+  renderPreview(true);
+}
+
+function deleteCard(i) {
+  if (!confirm('Удалить карточку ' + (i + 1) + '?')) return;
+  saveUndoState();
+  state.cards.splice(i, 1);
+  if (state.previewIndex >= state.cards.length) state.previewIndex = Math.max(0, state.cards.length - 1);
+  state.openCardIndex = -1;
+  renderCardsAccordion(); renderPreview();
+}
+
+function clearAllCards() {
+  if (!confirm('Удалить ВСЕ карточки?')) return;
+  saveUndoState();
+  state.cards = []; state.previewIndex = 0; state.openCardIndex = -1;
+  renderCardsAccordion(); renderPreview();
+}
+
+/* ============================================================
+   ЗАГРУЗКА КАРТИНОК И СВОИХ ШРИФТОВ
+   ============================================================ */
+function applyUrl(i, inputEl) {
+  const url = inputEl.value.trim();
+  if (!url) return;
+  saveUndoState();
+  showToast('⏳ Загружаем картинку...', 'success');
+  const attempts = [
+    { name: 'Напрямую', url: url },
+    { name: 'Прокси 1', url: 'https://images.weserv.nl/?url=' + encodeURIComponent(url) },
+    { name: 'Прокси 2', url: 'https://wsrv.nl/?url=' + encodeURIComponent(url) }
+  ];
+  let attemptIndex = 0;
+  function tryNext() {
+    if (attemptIndex >= attempts.length) {
+      showToast('❌ Не удалось загрузить. Скачайте файл и добавьте через «📁 Файл»', 'error');
+      return;
+    }
+    const attempt = attempts[attemptIndex];
+    const img = new Image();
+    const timeout = setTimeout(() => { img.onload = null; img.onerror = null; attemptIndex++; tryNext(); }, 3000);
+    img.onload = () => {
+      clearTimeout(timeout);
+      state.cards[i].image = attempt.url;
+      inputEl.value = '';
+      renderCardsAccordion(); renderPreview(true);
+      showToast('✅ Картинка добавлена (' + attempt.name + ')', 'success');
+    };
+    img.onerror = () => { clearTimeout(timeout); attemptIndex++; tryNext(); };
+    img.src = attempt.url;
+  }
+  tryNext();
+}
+
+function clearImage(i) {
+  saveUndoState();
+  state.cards[i].image = '';
+  renderCardsAccordion(); renderPreview();
+}
+
+function uploadImage(i, event) {
+  const file = event.target.files[0]; if (!file) return;
+  saveUndoState();
+  showToast('⏳ Обработка...');
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = state.cards[i].imgQuality || 800;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; } } else { if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; } }
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+      state.cards[i].image = c.toDataURL('image/jpeg', 0.85);
+      renderCardsAccordion(); renderPreview(true);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file); event.target.value = '';
+}
+
+function uploadCustomFrame(i, event) {
+  const file = event.target.files[0]; if (!file) return;
+  saveUndoState();
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    state.cards[i].customFrame = e.target.result;
+    renderCardsAccordion(); renderPreview(true);
+  };
+  reader.readAsDataURL(file); event.target.value = '';
+}
+
+function uploadCustomFont(i, event) {
+  const file = event.target.files[0]; if (!file) return;
+  saveUndoState();
+  showToast('⏳ Загрузка и сжатие шрифта...');
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const fontName = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9а-яА-Я_\-]/g, "_");
+    const fontData = e.target.result;
+    if (window.woff2) {
+      try {
+        window.woff2.compress(fontData).then(compressed => {
+          const base64 = 'data:font/woff2;base64,' + btoa(String.fromCharCode.apply(null, compressed));
+          saveCustomFont(i, fontName, base64);
+        }).catch(() => { saveCustomFont(i, fontName, fontData); });
+      } catch (err) { saveCustomFont(i, fontName, fontData); }
+    } else {
+      saveCustomFont(i, fontName, fontData);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  event.target.value = '';
+}
+
+function saveCustomFont(i, fontName, fontData) {
+  const style = document.createElement('style');
+  style.textContent = "@font-face { font-family: '" + fontName + "'; src: url(" + fontData + "); font-weight: 400 900; }";
+  document.head.appendChild(style);
+  customFonts[fontName] = fontData;
+  state.cards[i].fontFamily = fontName;
+  renderCardsAccordion(); renderPreview(true);
+  showToast('✅ Шрифт "' + fontName + '" загружен и сжат!', 'success');
+}
+
+/* ============================================================
+   ЖИВОЕ ПРЕВЬЮ
+   ============================================================ */
+function getGridInfo() { return GRID_OPTIONS.find(g => g.id === state.grid) || GRID_OPTIONS[2]; }
+function getPageDimensions() {
+  const size = PAGE_SIZES[state.pageFormat] || PAGE_SIZES.A4;
+  return state.orientation === 'landscape' ? { w: size.h, h: size.w } : { w: size.w, h: size.h };
+}
+
+let hoverState = { font: null, frame: null, weight: null };
+function hoverFontPreview(fontName) { hoverState.font = fontName; renderPreview(true); }
+function hoverWeightPreview(weight) { hoverState.weight = weight; renderPreview(true); }
+function hoverFramePreview(frameId) { hoverState.frame = frameId; renderPreview(true); }
+function resetHoverPreview() { hoverState.font = null; hoverState.frame = null; hoverState.weight = null; renderPreview(true); }
+
+function renderPreview(silent = false) {
+  const wrap = document.getElementById('previewCard');
+  const info = document.getElementById('previewInfo');
+  const warn = document.getElementById('previewWarn');
+  
+  const wasReady = wrap.classList.contains('ready');
+  wrap.classList.remove('warn-state');
+  warn.textContent = '';
+  
+  if (state.orientation === 'landscape') {
+    wrap.classList.add('landscape');
+  } else {
+    wrap.classList.remove('landscape');
+  }
+  
+  const card = state.cards[state.previewIndex];
+  if (!card) {
+    wrap.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;">Нет карточки</div>';
+    info.textContent = 'Карточек нет'; 
+    wrap.classList.add('ready');
+    return;
+  }
+
+  info.textContent = 'Карточка ' + (state.previewIndex + 1) + ' из ' + state.cards.length;
+  
+  const fontName = hoverState.font || card.fontFamily || 'Segoe UI';
+  ensureFontLoaded(fontName);
+
+  wrap.innerHTML = '';
+  
+  let baseWidth = 380;
+  let baseHeight = 506;
+  if (state.orientation === 'landscape') {
+    baseWidth = 506;
+    baseHeight = 380;
+  }
+  
+  const br = (card.borderRadius !== undefined ? card.borderRadius : 3) * (baseWidth/60);
+  wrap.style.borderRadius = br + 'px';
+  
+  const scale = baseWidth / 340;
+  const inner = buildCardContent(card, scale, hoverState.font, hoverState.frame, hoverState.weight);
+  inner.style.margin = 'auto';
+  wrap.appendChild(inner);
+
+  if (wasReady || silent) {
+    wrap.classList.add('ready');
+  }
+
+  const finalFont = hoverState.font || card.fontFamily || 'Segoe UI';
+  document.fonts.load('900 16px "' + finalFont + '"').then(() => {
+    setTimeout(() => {
+      wrap.classList.add('ready');
+      
+      const texts = inner.querySelectorAll('.ci-top-panel, .ci-bottom-panel, .ci-overlay-text');
+      let overflow = false;
+      texts.forEach(el => {
+        if (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1) {
+          overflow = true;
+          el.style.outline = '2px dashed #ef4444';
+          el.style.outlineOffset = '-2px';
+        }
+      });
+      if (overflow) {
+        if (card.manualLineBreaks) {
+          warn.textContent = '⚠️ Текст не влезает — проверьте переносы и размер шрифта';
+        } else {
+          warn.textContent = '⚠️ Текст не влезает — уменьшите размер или отступы';
+        }
+        wrap.classList.add('warn-state');
+      }
+    }, 30);
+  }).catch(() => {
+    wrap.classList.add('ready');
+  });
+}
+
+function autofitCurrent() {
+  const card = state.cards[state.previewIndex];
+  if (!card) return;
+  if (card.manualLineBreaks) {
+    showToast('⚠️ При ручном переносе автоподгонка отключена', 'error');
+    return;
+  }
+  saveUndoState();
+  const mainText = document.querySelector('#previewCard .ci-bottom-panel, #previewCard .ci-top-panel, #previewCard .ci-overlay-text');
+  if (mainText && mainText.textContent.trim() !== '') {
+    const maxW = mainText.clientWidth;
+    const maxH = mainText.clientHeight;
+    const fittedPx = fitTextToBox(mainText, maxW, maxH, 8, 150);
+    const baseWidth = state.orientation === 'landscape' ? 506 : 380;
+    card.baseFontSize = Math.round(fittedPx / (baseWidth / 340));
+  }
+  renderCardsAccordion(); renderPreview(true);
+  showToast('🔧 Размер подогнан под карточку', 'success');
+}
+
+/* ============================================================
+   ПРАВАЯ ПАНЕЛЬ: ОБЩИЕ НАСТРОЙКИ
+   ============================================================ */
+function renderSettings() {
+  const box = document.getElementById('settingsGrid');
+  const gridOptions = GRID_OPTIONS.map(g => '<option value="' + g.id + '"' + (state.grid === g.id ? ' selected' : '') + '>' + g.label + '</option>').join('');
+  const pageBgSwatches = PAGE_BG_PRESETS.map(c => '<div class="swatch' + (state.pageBg.toLowerCase() === c.toLowerCase() ? ' active' : '') + '" style="background:' + c + ';" onclick="setSetting(\'pageBg\', \'' + c + '\')"></div>').join('');
+  
+  box.innerHTML =
+    '<div class="setting-group sg-sheet"><h3>📄 Лист</h3>' +
+      '<div class="setting-row"><label>Формат</label><select onchange="setSetting(\'pageFormat\', this.value)"><option value="A4"' + (state.pageFormat === 'A4' ? ' selected' : '') + '>A4</option><option value="A5"' + (state.pageFormat === 'A5' ? ' selected' : '') + '>A5</option></select></div>' +
+      '<div class="setting-row"><label>Ориент.</label><select onchange="setSetting(\'orientation\', this.value)"><option value="portrait"' + (state.orientation === 'portrait' ? ' selected' : '') + '>Портрет</option><option value="landscape"' + (state.orientation === 'landscape' ? ' selected' : '') + '>Альбом</option></select></div>' +
+      '<div class="setting-row"><label>Сетка</label><select onchange="setSetting(\'grid\', this.value)">' + gridOptions + '</select></div>' +
+      '<div class="setting-row"><label>Поля мм</label><input type="number" min="0" max="30" value="' + state.marginMm + '" onchange="setSetting(\'marginMm\', +this.value)"></div>' +
+      '<div class="setting-row"><label>Отступы</label><input type="number" min="0" max="20" value="' + state.gapMm + '" onchange="setSetting(\'gapMm\', +this.value)"></div>' +
+    '</div>' +
+    '<div class="setting-group sg-bg"><h3>🎨 Фон листа</h3>' +
+      '<div class="setting-row"><label>Цвет листа</label><input type="color" value="' + state.pageBg + '" onchange="setSetting(\'pageBg\', this.value)"></div><div class="swatches">' + pageBgSwatches + '</div>' +
+      '<p style="font-size:11px; color:#64748b; margin-top:10px; line-height:1.4;">Все настройки карточек находятся внутри каждой карточки в левой панели.</p>' +
+    '</div>';
+}
+
+function setSetting(key, value) {
+  saveUndoState();
+  state[key] = value;
+  if (key === 'pageBg') document.body.style.background = value;
+  if (key === 'orientation') {
+    renderPreview(false);
+  } else {
+    renderPreview(true);
+  }
+  renderSettings();
+}
+</script><script>
+/* ============================================================
+   ПРЕДПРОСМОТР PDF И ПЕЧАТЬ
+   ============================================================ */
+function openPreview() {
+  const body = document.getElementById('previewBody');
+  body.innerHTML = '';
+  if (state.cards.length === 0) {
+    body.innerHTML = '<div style="text-align:center;padding:60px;color:#475569;">Нет карточек</div>';
+    document.getElementById('previewModal').classList.add('active'); return;
+  }
+  const page = getPageDimensions();
+  const grid = getGridInfo();
+  const cellsPerPage = grid.cols * grid.rows;
+  const totalPages = Math.ceil(state.cards.length / cellsPerPage);
+  const PREVIEW_WIDTH_PX = 720;
+  const scale = PREVIEW_WIDTH_PX / page.w;
+  const marginPx = state.marginMm * scale;
+  const gapPx = state.gapMm * scale;
+
+  for (let p = 0; p < totalPages; p++) {
+    const pageDiv = document.createElement('div');
+    pageDiv.className = 'page-preview';
+    pageDiv.style.width = '100%'; pageDiv.style.maxWidth = '780px';
+    const pageHeightPx = page.h * scale;
+    pageDiv.style.minHeight = pageHeightPx + 'px';
+    pageDiv.style.background = state.pageBg;
+    pageDiv.style.padding = marginPx + 'px';
+    
+    const label = document.createElement('div'); label.className = 'page-label';
+    label.textContent = 'Страница ' + (p + 1) + ' из ' + totalPages;
+    pageDiv.appendChild(label);
+    
+    const gridDiv = document.createElement('div'); gridDiv.className = 'page-grid';
+    gridDiv.style.gridTemplateColumns = 'repeat(' + grid.cols + ', 1fr)';
+    gridDiv.style.gridTemplateRows = 'repeat(' + grid.rows + ', 1fr)';
+    gridDiv.style.gap = gapPx + 'px';
+    gridDiv.style.placeContent = 'stretch';
+    
+    const availableWidth = PREVIEW_WIDTH_PX - (marginPx * 2) - (gapPx * (grid.cols - 1));
+    const availableHeight = pageHeightPx - (marginPx * 2) - (gapPx * (grid.rows - 1)) - 40;
+    
+    let cellW = availableWidth / grid.cols;
+    let cellH = availableHeight / grid.rows;
+    
+    const ratio = (state.orientation === 'landscape') ? 4 / 3 : 3 / 4;
+    
+    if (state.grid === '1x1') {
+      cellW = availableWidth;
+      cellH = availableHeight;
+    } else {
+      if (cellW / cellH > ratio) {
+        cellW = cellH * ratio;
+      } else {
+        cellH = cellW / ratio;
+      }
+    }
+    
+    for (let c = 0; c < cellsPerPage; c++) {
+      const cardIndex = p * cellsPerPage + c;
+      const cell = document.createElement('div'); cell.className = 'page-card-wrap';
+      cell.style.width = '100%';
+      cell.style.height = '100%';
+      cell.style.display = 'flex';
+      cell.style.alignItems = 'center';
+      cell.style.justifyContent = 'center';
+      
+      if (cardIndex < state.cards.length) {
+        const card = state.cards[cardIndex];
+        const br = (card.borderRadius !== undefined ? card.borderRadius : 3) * scale;
+        
+        const cardWrapper = document.createElement('div');
+        cardWrapper.style.width = cellW + 'px';
+        cardWrapper.style.height = cellH + 'px';
+        cardWrapper.style.borderRadius = br + 'px';
+        cardWrapper.style.overflow = 'hidden';
+        cardWrapper.style.flexShrink = '0';
+        
+        const fontScale = cellW / 340;
+        const innerCard = buildCardContent(card, fontScale);
+        innerCard.classList.add('ready');
+        cardWrapper.appendChild(innerCard);
+        cell.appendChild(cardWrapper);
+      }
+      gridDiv.appendChild(cell);
+    }
+    pageDiv.appendChild(gridDiv);
+    
+    const fDiv = document.createElement('div'); fDiv.className = 'page-footer';
+    fDiv.innerHTML = 'Свинина Галина Сергеевна | <a href="https://vk.ru/logika24" target="_blank">vk.ru/logika24</a><div class="copyright">Авторские права защищены. Копирование и распространение строго запрещается.</div>';
+    pageDiv.appendChild(fDiv);
+    body.appendChild(pageDiv);
+  }
+  document.getElementById('previewModal').classList.add('active');
+}
+
+function printPDF() {
+  if (state.cards.length === 0) { showToast('❌ Нет карточек', 'error'); return; }
+  const printRoot = document.getElementById('printRoot'); printRoot.innerHTML = '';
+  const page = getPageDimensions(); 
+  const grid = getGridInfo();
+  const cellsPerPage = grid.cols * grid.rows; 
+  const totalPages = Math.ceil(state.cards.length / cellsPerPage);
+
+  const pageCSS = state.orientation === 'landscape' 
+    ? '@page { size: ' + state.pageFormat + ' landscape; margin: 0; }' 
+    : '@page { size: ' + state.pageFormat + ' portrait; margin: 0; }';
+  let pageStyle = document.getElementById('printPageStyle');
+  if (!pageStyle) { pageStyle = document.createElement('style'); pageStyle.id = 'printPageStyle'; document.head.appendChild(pageStyle); }
+  pageStyle.textContent = pageCSS;
+
+  for (let p = 0; p < totalPages; p++) {
+    const pageDiv = document.createElement('div'); pageDiv.className = 'print-page';
+    pageDiv.style.width = page.w + 'mm';
+    pageDiv.style.height = page.h + 'mm';
+    pageDiv.style.padding = state.marginMm + 'mm';
+    pageDiv.style.background = state.pageBg;
+    pageDiv.style.boxSizing = 'border-box';
+    pageDiv.style.display = 'flex';
+    pageDiv.style.flexDirection = 'column';
+
+    const gridDiv = document.createElement('div'); gridDiv.className = 'print-grid';
+    gridDiv.style.display = 'grid';
+    gridDiv.style.gridTemplateColumns = 'repeat(' + grid.cols + ', 1fr)';
+    gridDiv.style.gridTemplateRows = 'repeat(' + grid.rows + ', 1fr)';
+    gridDiv.style.gap = state.gapMm + 'mm';
+    gridDiv.style.flex = '1';
+    gridDiv.style.minHeight = '0';
+    gridDiv.style.placeContent = 'stretch';
+
+    for (let c = 0; c < cellsPerPage; c++) {
+      const cardIndex = p * cellsPerPage + c;
+      
+      const cellWrapper = document.createElement('div');
+      cellWrapper.style.display = 'flex';
+      cellWrapper.style.alignItems = 'center';
+      cellWrapper.style.justifyContent = 'center';
+      cellWrapper.style.overflow = 'hidden';
+      cellWrapper.style.width = '100%';
+      cellWrapper.style.height = '100%';
+
+      if (cardIndex < state.cards.length) {
+        const card = state.cards[cardIndex];
+        
+        const cardEl = document.createElement('div');
+        cardEl.className = 'print-card-wrap';
+        
+        const cellW = (page.w - state.marginMm * 2 - state.gapMm * (grid.cols - 1)) / grid.cols;
+        const cellH = (page.h - state.marginMm * 2 - 15 - state.gapMm * (grid.rows - 1)) / grid.rows;
+        
+        let finalW = cellW;
+        let finalH = cellH;
+        const ratio = (state.orientation === 'landscape') ? 4 / 3 : 3 / 4;
+        
+        if (finalW / finalH > ratio) {
+          finalW = finalH * ratio;
+        } else {
+          finalH = finalW / ratio;
+        }
+
+        cardEl.style.width = finalW + 'mm';
+        cardEl.style.height = finalH + 'mm';
+        cardEl.style.flexShrink = '0';
+        cardEl.style.position = 'relative';
+        cardEl.style.overflow = 'hidden';
+        
+        const br = (card.borderRadius !== undefined ? card.borderRadius : 3);
+        cardEl.style.borderRadius = br + 'mm';
+
+        const fontScale = (finalW * MM_TO_PX) / 340;
+
+        const innerCard = buildCardContent(card, fontScale);
+        innerCard.classList.add('ready');
+        innerCard.style.width = '100%';
+        innerCard.style.height = '100%';
+        innerCard.style.borderRadius = 'inherit';
+        
+        cardEl.appendChild(innerCard);
+        cellWrapper.appendChild(cardEl);
+      }
+      gridDiv.appendChild(cellWrapper);
+    }
+    pageDiv.appendChild(gridDiv);
+    
+    // Убрано имя автора, оставлен только копирайт
+    const fDiv = document.createElement('div'); fDiv.className = 'print-footer';
+    fDiv.innerHTML = '<div class="copyright">Авторские права защищены.</div>';
+    pageDiv.appendChild(fDiv);
+    printRoot.appendChild(pageDiv);
+  }
+
+  requestAnimationFrame(() => {
+    setTimeout(() => { window.print(); }, 300);
+  });
+}
+
+function closePreview() { 
+  document.getElementById('previewModal').classList.remove('active'); 
+}
+
+/* ============================================================
+   ПЕРЕИМЕНОВАНИЕ И DRAG & DROP
+   ============================================================ */
+function updateCardName(i, newName) {
+  if (!state.cards[i]) return;
+  saveUndoState();
+  state.cards[i].listName = newName;
+  
+  const cardInput = document.querySelector(`input[data-name-input="${i}"]`);
+  if (cardInput) cardInput.value = newName;
+
+  if (state.previewIndex === i) renderPreview(true);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const container = document.getElementById('cardsAccordion');
+  
+  container.addEventListener('mousedown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+      const item = e.target.closest('.acc-item');
+      if (item) item.setAttribute('draggable', 'false');
+    }
+  });
+
+  container.addEventListener('mouseup', (e) => {
+    const items = container.querySelectorAll('.acc-item');
+    items.forEach(item => item.setAttribute('draggable', 'true'));
+  });
+
+  container.addEventListener('dragstart', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+      e.preventDefault();
+      return;
+    }
+    
+    const item = e.target.closest('.acc-item');
+    if (!item) return;
+    e.dataTransfer.setData('text/plain', item.dataset.index);
+    item.style.opacity = '0.5';
+    item.style.border = '2px dashed #7c3aed';
+  });
+
+  container.addEventListener('dragend', (e) => {
+    const item = e.target.closest('.acc-item');
+    if (!item) return;
+    item.style.opacity = '1';
+    item.style.border = '1px solid #e2e8f0';
+  });
+
+  container.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const draggingItem = container.querySelector('.acc-item[style*="opacity: 0.5"]');
+    if (!draggingItem) return;
+    
+    const siblings = [...container.querySelectorAll('.acc-item:not([style*="opacity: 0.5"])')];
+    let nextSibling = siblings.find(sibling => {
+      return e.clientY <= sibling.getBoundingClientRect().top + sibling.offsetHeight / 2;
+    });
+    
+    if (nextSibling) {
+      container.insertBefore(draggingItem, nextSibling);
+    } else {
+      container.appendChild(draggingItem);
+    }
+  });
+
+  container.addEventListener('drop', (e) => {
+    e.preventDefault();
+    saveUndoState();
+    
+    const items = [...container.querySelectorAll('.acc-item')];
+    const newCards = items.map(item => state.cards[item.dataset.index]);
+    
+    state.cards = newCards;
+    state.previewIndex = 0;
+    
+    renderCardsAccordion();
+    renderPreview(true);
+    showToast('🔄 Порядок карточек изменен', 'success');
+  });
+});
+
+/* ============================================================
+   ИНИЦИАЛИЗАЦИЯ
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  state.cards = [
+    Object.assign(newCard()),
+    Object.assign(newCard()),
+    Object.assign(newCard()),
+    Object.assign(newCard())
+  ];
+  state.previewIndex = 0;
+  state.openTab = 'content';
+  
+  renderCardsAccordion();
+  renderSettings();
+  
+  const previewCard = document.getElementById('previewCard');
+  previewCard.classList.remove('ready');
+  
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => {
+      setTimeout(() => {
+        renderPreview(true);
+      }, 50);
+    });
+  } else {
+    renderPreview(true);
+  }
+  
+  document.getElementById('previewModal').addEventListener('click', (e) => { 
+    if (e.target === e.currentTarget) closePreview(); 
+  });
+  
+  document.addEventListener('keydown', (e) => { 
+    if (e.key === 'Escape') closePreview(); 
+  });
+});
+</script>
+</body>
+</html>
