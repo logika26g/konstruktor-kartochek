@@ -63,8 +63,6 @@
   .manual-input:focus { border-color: #7c3aed; box-shadow: 0 0 0 2px #ddd6fe; }
   .field-row input[type=range] { flex: 1; height: 8px; cursor: pointer; border-radius: 4px; transition: opacity 0.2s; }
   .field-row input[type=range]:active { opacity: 0.8; }
-  
-    /* Жесткая привязка цветов ползунков к классам блоков */
   .block-bg input[type=range] { accent-color: #ef4444; }
   .block-frame input[type=range] { accent-color: #3b82f6; }
   .block-size input[type=range] { accent-color: #f97316; }
@@ -116,7 +114,6 @@
   .toast.success { background: #10b981; } .toast.error { background: #ef4444; }
   .main-footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; padding: 12px; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); font-size: 13px; color: #4c1d95; font-weight: 600; z-index: 100; border-top: 1px solid #e2e8f0; box-shadow: 0 -2px 10px rgba(0,0,0,0.02); }
   .main-footer a { color: #7c3aed; text-decoration: none; border-bottom: 1px dashed #7c3aed; }
-
   .custom-select-wrapper { position: relative; flex: 1; min-width: 120px; }
   .custom-select-display { padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; font-size: 13px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
   .custom-select-display::after { content: '▼'; font-size: 10px; color: #94a3b8; margin-left: 5px; }
@@ -125,7 +122,6 @@
   .custom-option { padding: 8px 12px; cursor: pointer; font-size: 13px; transition: background 0.1s; }
   .custom-option:hover { background: #f1f5f9; }
   .custom-option.selected { background: #e0e7ff; font-weight: 700; color: #3730a3; }
-
   @media print {
     body > *:not(#printRoot) { display: none !important; }
     #printRoot { display: block !important; }
@@ -141,7 +137,6 @@
   #printRoot .print-footer { text-align: center; font-size: 10pt; color: #64748b; padding-top: 3mm; border-top: 1px solid #e2e8f0; flex-shrink: 0; height: auto; }
   #printRoot .print-footer a { color: #4c1d95; text-decoration: none; }
   #printRoot .copyright { font-size: 8pt; color: #94a3b8; margin-top: 1mm; }
-
   @media (max-width: 1024px) {
     .workspace.panel-left-open, .workspace.panel-right-open, .workspace.panel-both-open { padding: 0; }
     .side-panel { width: 85%; max-width: 400px; box-shadow: -10px 0 30px rgba(0,0,0,0.2); }
@@ -164,18 +159,10 @@
     .mini-btn { padding: 8px 12px; font-size: 13px; flex: 1; justify-content: center; }
     .main-footer { font-size: 11px; padding: 10px; }
   }
-  
-  .preview-card {
-    visibility: hidden;
-    opacity: 0;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
-  }
-  .preview-card.ready {
-    visibility: visible;
-    opacity: 1;
-  }
-</style></head><body>
-<div class="app-header">
+  .preview-card { visibility: hidden; opacity: 0; transition: opacity 0.3s ease, visibility 0.3s ease; }
+  .preview-card.ready { visibility: visible; opacity: 1; }
+</style>
+</head><body><div class="app-header">
   <h1>📚 Конструктор карточек</h1>
   <button class="btn btn-toggle" id="btnToggleLeft" onclick="togglePanel('left')">📋 Карточки</button>
   <button class="btn btn-toggle" id="btnToggleRight" onclick="togglePanel('right')">⚙️ Общие</button>
@@ -234,12 +221,11 @@
 
 <footer class="main-footer">
   Свинина Галина Сергеевна | <a href="https://vk.ru/logika24" target="_blank" rel="noopener">vk.ru/logika24</a>
-</footer>
+</footer><script>
+/* ===== ДЕМО-НАСТРОЙКИ ===== */
+const DEMO_LIMIT = 3;
+const BUY_URL = 'https://vk.ru/market/product/konstruktor-kartochek-228690474-15356690'; // ← сюда потом вставите ссылку на оплату
 
-<script>
-/* ============================================================
-   КОНСТАНТЫ И ХРАНИЛИЩЕ ШРИФТОВ
-   ============================================================ */
 const MM_TO_PX = 3.7795275591;
 const PAGE_SIZES = { A4: { w: 210, h: 297 }, A5: { w: 148, h: 210 }, Letter: { w: 216, h: 279 } };
 const GRID_OPTIONS = [
@@ -262,10 +248,7 @@ const GOOGLE_FONTS = [
 ];
 const PAGE_BG_PRESETS = ['#ffffff', '#fef9e7', '#dbeafe', '#d1fae5', '#fce7f3', '#ede9fe', '#f3f4f6', '#0f172a'];
 const customFonts = {};
-</script><script>
-/* ============================================================
-   БАНК ДЕКОРАТИВНЫХ РАМОК
-   ============================================================ */
+
 const FRAME_STYLES = [
   { id: 'none', label: 'Без рамки' }, { id: 'solid', label: 'Классическая' },
   { id: 'double', label: 'Двойная' }, { id: 'rounded', label: 'Скруглённая' },
@@ -273,20 +256,13 @@ const FRAME_STYLES = [
   { id: 'zigzag', label: 'Зигзаг' }, { id: 'wave', label: 'Волна' },
   { id: 'corners', label: 'Уголки' }, { id: 'leaf', label: 'Листья' },
   { id: 'stars', label: 'Звёздочки' }, { id: 'cloud', label: 'Облако' },
-  { id: 'kids', label: 'Детская' },
-  { id: 'heart', label: 'Сердечки' },
-  { id: 'dashed', label: 'Штриховая' },
-  { id: 'stitch', label: 'Стёжка (пунктир)' },
-  { id: 'doublewave', label: 'Двойная волна' },
-  { id: 'leaves', label: 'Веточки' },
-  { id: 'heart-double', label: 'Двойные сердечки' },
-  { id: 'floral', label: 'Цветочный узор' },
-  { id: 'geometric', label: 'Геометрия' },
-  { id: 'bubbles', label: 'Пузырьки' },
-  { id: 'vintage', label: 'Винтажная' },
-  { id: 'rainbow', label: 'Радуга' },
-  { id: 'snowflake', label: 'Снежинки' },
-  { id: 'confetti', label: 'Конфетти' },
+  { id: 'kids', label: 'Детская' }, { id: 'heart', label: 'Сердечки' },
+  { id: 'dashed', label: 'Штриховая' }, { id: 'stitch', label: 'Стёжка (пунктир)' },
+  { id: 'doublewave', label: 'Двойная волна' }, { id: 'leaves', label: 'Веточки' },
+  { id: 'heart-double', label: 'Двойные сердечки' }, { id: 'floral', label: 'Цветочный узор' },
+  { id: 'geometric', label: 'Геометрия' }, { id: 'bubbles', label: 'Пузырьки' },
+  { id: 'vintage', label: 'Винтажная' }, { id: 'rainbow', label: 'Радуга' },
+  { id: 'snowflake', label: 'Снежинки' }, { id: 'confetti', label: 'Конфетти' },
   { id: 'custom', label: 'Своя картинка' }
 ];
 
@@ -300,8 +276,7 @@ function getFrameSVG(frameId, strokeColor, strokeWidthUnits) {
     case 'double': return '<svg viewBox="0 0 300 400" preserveAspectRatio="none"><rect x="' + sw + '" y="' + sw + '" width="' + (300 - sw*2) + '" height="' + (400 - sw*2) + '" ' + common + ' stroke-width="' + sw*0.6 + '"/><rect x="' + sw*3 + '" y="' + sw*3 + '" width="' + (300 - sw*6) + '" height="' + (400 - sw*6) + '" ' + common + ' stroke-width="' + sw*0.35 + '"/></svg>';
     case 'rounded': return '<svg viewBox="0 0 300 400" preserveAspectRatio="none"><rect x="' + sw/2 + '" y="' + sw/2 + '" width="' + (300 - sw) + '" height="' + (400 - sw) + '" ' + common + ' stroke-width="' + sw + '" rx="20" ry="20"/></svg>';
     case 'ornament': {
-      const m = sw;
-      const inner = sw * 2.2;
+      const m = sw; const inner = sw * 2.2;
       return '<svg viewBox="0 0 300 400" preserveAspectRatio="none">' +
         '<rect x="' + m/2 + '" y="' + m/2 + '" width="' + (300 - m) + '" height="' + (400 - m) + '" ' + common + ' stroke-width="' + sw*0.6 + '"/>' +
         '<rect x="' + inner + '" y="' + inner + '" width="' + (300 - inner*2) + '" height="' + (400 - inner*2) + '" ' + common + ' stroke-width="' + sw*0.35 + '"/>' +
@@ -309,10 +284,6 @@ function getFrameSVG(frameId, strokeColor, strokeWidthUnits) {
         '<path d="M ' + (300 - inner - 18) + ' ' + inner + ' q 0 -14 -18 -14 q -14 0 -14 14" ' + common + ' stroke-width="' + sw*0.4 + '"/>' +
         '<path d="M ' + (inner + 18) + ' ' + (400 - inner) + ' q 0 14 18 14 q 14 0 14 -14" ' + common + ' stroke-width="' + sw*0.4 + '"/>' +
         '<path d="M ' + (300 - inner - 18) + ' ' + (400 - inner) + ' q 0 14 -18 14 q -14 0 -14 -14" ' + common + ' stroke-width="' + sw*0.4 + '"/>' +
-        '<path d="M 150 ' + (m*0.5) + ' l 8 8 l -8 8 l -8 -8 Z" ' + common + ' stroke-width="' + sw*0.3 + '"/>' +
-        '<path d="M 150 ' + (400 - m*0.5) + ' l 8 -8 l -8 -8 l -8 8 Z" ' + common + ' stroke-width="' + sw*0.3 + '"/>' +
-        '<path d="M ' + (m*0.5) + ' 200 l 8 8 l -8 8 l -8 -8 Z" ' + common + ' stroke-width="' + sw*0.3 + '"/>' +
-        '<path d="M ' + (300 - m*0.5) + ' 200 l -8 8 l 8 8 l 8 -8 Z" ' + common + ' stroke-width="' + sw*0.3 + '"/>' +
         '</svg>';
     }
     case 'dots': return '<svg viewBox="0 0 300 400" preserveAspectRatio="none"><defs><pattern id="dotpat" x="0" y="0" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="' + (Math.max(2, sw*0.45)) + '" fill="' + c + '"/></pattern></defs><rect x="' + sw + '" y="' + sw + '" width="' + (300 - sw*2) + '" height="' + (400 - sw*2) + '" fill="none" stroke="url(#dotpat)" stroke-width="' + sw + '"/></svg>';
@@ -328,8 +299,7 @@ function getFrameSVG(frameId, strokeColor, strokeWidthUnits) {
     case 'corners': {
       const L = 40;
       return '<svg viewBox="0 0 300 400" preserveAspectRatio="none"><path d="M ' + sw + ' ' + (sw + L) + ' L ' + sw + ' ' + sw + ' L ' + (sw + L) + ' ' + sw + '" ' + common + ' stroke-width="' + sw + '"/><path d="M ' + (300 - sw - L) + ' ' + sw + ' L ' + (300 - sw) + ' ' + sw + ' L ' + (300 - sw) + ' ' + (sw + L) + '" ' + common + ' stroke-width="' + sw + '"/><path d="M ' + sw + ' ' + (400 - sw - L) + ' L ' + sw + ' ' + (400 - sw) + ' L ' + (sw + L) + ' ' + (400 - sw) + '" ' + common + ' stroke-width="' + sw + '"/><path d="M ' + (300 - sw - L) + ' ' + (400 - sw) + ' L ' + (300 - sw) + ' ' + (400 - sw) + ' L ' + (300 - sw) + ' ' + (400 - sw - L) + '" ' + common + ' stroke-width="' + sw + '"/></svg>';
-    }
-    case 'leaf': {
+    }    case 'leaf': {
       const leaf = (x, y, rot) => '<g transform="translate(' + x + ',' + y + ') rotate(' + rot + ')"><path d="M 0 0 Q 15 -20 30 0 Q 15 20 0 0 Z" ' + common + ' stroke-width="' + sw*0.4 + '"/><path d="M 0 0 L 25 0" ' + common + ' stroke-width="' + sw*0.3 + '"/></g>';
       return '<svg viewBox="0 0 300 400" preserveAspectRatio="none"><rect x="' + sw/2 + '" y="' + sw/2 + '" width="' + (300 - sw) + '" height="' + (400 - sw) + '" ' + common + ' stroke-width="' + sw*0.35 + '"/>' + leaf(15, 15, 45) + leaf(285, 15, 135) + leaf(15, 385, -45) + leaf(285, 385, -135) + '</svg>';
     }
@@ -380,7 +350,8 @@ function getFrameSVG(frameId, strokeColor, strokeWidthUnits) {
       for (let y = 45; y < 360; y += 24) { hh += heartAt(12, y, 0.7); hh += heartAt(26, y, 0.5); }
       for (let y = 45; y < 360; y += 24) { hh += heartAt(272, y, 0.7); hh += heartAt(286, y, 0.5); }
       return `<svg viewBox="0 0 300 400" preserveAspectRatio="none">${hh}</svg>`;
-    }    case 'floral': {
+    }
+    case 'floral': {
       const flower = (x, y, s) => {
         let petals = '';
         for (let i = 0; i < 5; i++) {
@@ -494,7 +465,8 @@ function getFrameSVG(frameId, strokeColor, strokeWidthUnits) {
     default: return '';
   }
 }
-</script><script>
+</script>
+<script>
 /* ============================================================
    ГЛОБАЛЬНОЕ СОСТОЯНИЕ
    ============================================================ */
@@ -605,7 +577,7 @@ function ensureFontLoaded(fontName) {
   link.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(fontName).replace(/%20/g, '+') + ':wght@400;700;900&display=swap';
   document.head.appendChild(link);
 }
-
+</script><script>
 /* ============================================================
    СБОРКА КАРТОЧКИ
    ============================================================ */
@@ -635,7 +607,6 @@ function buildCardContent(card, scale = 1, hoverFont = null, hoverFrame = null, 
   const customFrameScale = getVal(card.customFrameScale, 100);
   const customFrameRotate = getVal(card.customFrameRotate, 0);
   
-  // Новые параметры для встроенных рамок
   const frameScale = getVal(card.frameScale, 100);
   const frameOffset = getVal(card.frameOffset, 0);
 
@@ -782,13 +753,11 @@ function buildCardContent(card, scale = 1, hoverFont = null, hoverFrame = null, 
     if (finalFrameStyle === 'custom' && card.customFrame) {
       layer.innerHTML = '<img src="' + escapeHtml(card.customFrame) + '" style="width:100%;height:100%;object-fit:fill;display:block; transform: rotate(' + customFrameRotate + 'deg) scale(' + (customFrameScale / 100) + '); transition: transform 0.1s;">';
     } else if (finalFrameStyle === 'dots') {
-      // Применяем масштаб и сдвиг к CSS-рамке (точки)
       layer.style.border = Math.max(2, borderWidth * 5) + 'px dotted ' + borderColor;
       layer.style.borderRadius = (borderRadius * scale) + 'px';
       layer.style.transform = `scale(${frameScale / 100}) translate(${frameOffset}px, ${frameOffset}px)`;
       layer.style.transition = 'transform 0.1s';
     } else {
-      // Применяем масштаб и сдвиг к SVG-рамкам
       const svgString = getFrameSVG(finalFrameStyle, borderColor, borderWidth * 5);
       layer.innerHTML = `<div style="width:100%;height:100%;transform:scale(${frameScale/100}) translate(${frameOffset}px, ${frameOffset}px); transition: transform 0.1s;">${svgString}</div>`;
     }
@@ -796,11 +765,11 @@ function buildCardContent(card, scale = 1, hoverFont = null, hoverFrame = null, 
   }
   return container;
 }
-</script><script>
+</script>
+<script>
 /* ============================================================
    АККОРДЕОН КАРТОЧЕК
    ============================================================ */
-
 function makeCustomSelect(id, items, currentValue, onChangeFunc, hoverType = null) {
   let optionsHtml = '';
   let displayText = 'Выбрать...';
@@ -1167,7 +1136,6 @@ function updateCard(i, field, value) {
     }
   }
   
-  // Если меняем стиль рамки, нужно перерисовать интерфейс, чтобы показать/скрыть ползунки
   if (field === 'frameStyle') {
     renderCardsAccordion();
   }
@@ -1190,6 +1158,10 @@ function switchTab(btn, tabId) {
 }
 
 function addCard() {
+  if (state.cards.length >= DEMO_LIMIT) {
+    showPaywall();
+    return;
+  }
   saveUndoState();
   state.cards.push(newCard());
   state.previewIndex = state.cards.length - 1;
@@ -1201,8 +1173,37 @@ function addCard() {
   }, 100);
 }
 
+function showPaywall() {
+  if (document.getElementById('paywallOverlay')) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'paywallOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.8);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:20px;padding:40px 32px;max-width:480px;width:100%;text-align:center;box-shadow:0 25px 70px rgba(0,0,0,0.4);position:relative;">
+      <button onclick="document.getElementById('paywallOverlay').remove()"
+              style="position:absolute;top:14px;right:14px;background:#f1f5f9;border:none;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:18px;color:#64748b;">×</button>
+      <div style="font-size:64px;margin-bottom:16px;">🔒</div>
+      <h2 style="color:#4c1d95;font-size:24px;margin-bottom:12px;">Демо-режим</h2>
+      <p style="color:#475569;line-height:1.7;margin-bottom:28px;font-size:15px;">
+        В демо-версии можно создать не более <b>${DEMO_LIMIT}</b> карточек.<br>
+        Полная версия снимает все ограничения.
+      </p>
+      <a href="${BUY_URL}" target="_blank" rel="noopener"
+         style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;padding:16px 40px;border-radius:14px;text-decoration:none;font-weight:800;font-size:16px;box-shadow:0 8px 25px rgba(124,58,237,0.4);">
+        💳 Купить полную версию
+      </a>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
 function copyCard(i) {
   if (!state.cards[i]) return;
+  if (state.cards.length >= DEMO_LIMIT) {
+    showPaywall();
+    return;
+  }
   saveUndoState();
   const original = state.cards[i];
   const copy = JSON.parse(JSON.stringify(original));
@@ -1357,6 +1358,14 @@ function resetHoverPreview() { hoverState.font = null; hoverState.frame = null; 
 
 function renderPreview(silent = false) {
   const wrap = document.getElementById('previewCard');
+  
+  // --- ВОДЯНОЙ ЗНАК ДЕМО НА ЭКРАНЕ ---
+  const water = document.createElement('div');
+  water.textContent = 'ДЕМО';
+  water.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:60px;font-weight:900;color:rgba(239,68,68,0.3);pointer-events:none;z-index:999;letter-spacing:8px;user-select:none;';
+  wrap.appendChild(water);
+  // ------------------------------------
+
   const info = document.getElementById('previewInfo');
   const warn = document.getElementById('previewWarn');
   
@@ -1384,7 +1393,10 @@ function renderPreview(silent = false) {
   ensureFontLoaded(fontName);
 
   wrap.innerHTML = '';
-  
+    const water2 = document.createElement('div');
+  water2.textContent = 'ДЕМО';
+  water2.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:60px;font-weight:900;color:rgba(239,68,68,0.3);pointer-events:none;z-index:999;letter-spacing:8px;user-select:none;';
+  wrap.appendChild(water2);
   let baseWidth = 380;
   let baseHeight = 506;
   if (state.orientation === 'landscape') {
@@ -1572,7 +1584,11 @@ function openPreview() {
       gridDiv.appendChild(cell);
     }
     pageDiv.appendChild(gridDiv);
-    
+        const wm = document.createElement('div');
+    wm.textContent = 'ДЕМО · ДЕМО · ДЕМО';
+    wm.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:80px;font-weight:900;color:rgba(239,68,68,0.15);pointer-events:none;transform:rotate(-35deg);letter-spacing:10px;z-index:999;user-select:none;';
+    pageDiv.appendChild(wm);
+
     const fDiv = document.createElement('div'); fDiv.className = 'page-footer';
     fDiv.innerHTML = 'Свинина Галина Сергеевна | <a href="https://vk.ru/logika24" target="_blank">vk.ru/logika24</a><div class="copyright">Авторские права защищены. Копирование и распространение строго запрещается.</div>';
     pageDiv.appendChild(fDiv);
@@ -1669,10 +1685,14 @@ function printPDF() {
     }
     pageDiv.appendChild(gridDiv);
     
-    // Убрано имя автора, оставлен только копирайт
     const fDiv = document.createElement('div'); fDiv.className = 'print-footer';
     fDiv.innerHTML = '<div class="copyright">Авторские права защищены.</div>';
     pageDiv.appendChild(fDiv);
+    const wm = document.createElement('div');
+    wm.textContent = 'ДЕМО · ДЕМО · ДЕМО';
+    wm.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:80px;font-weight:900;color:rgba(239,68,68,0.2);pointer-events:none;transform:rotate(-35deg);letter-spacing:10px;z-index:999;user-select:none;-webkit-print-color-adjust:exact;print-color-adjust:exact;';
+    pageDiv.appendChild(wm);
+
     printRoot.appendChild(pageDiv);
   }
 
@@ -1774,7 +1794,6 @@ document.addEventListener('DOMContentLoaded', () => {
   state.cards = [
     Object.assign(newCard()),
     Object.assign(newCard()),
-    Object.assign(newCard()),
     Object.assign(newCard())
   ];
   state.previewIndex = 0;
@@ -1803,7 +1822,17 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', (e) => { 
     if (e.key === 'Escape') closePreview(); 
   });
+
+  // Баннер демо-режима
+  const headerEl = document.querySelector('.app-header');
+  if (headerEl) {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;padding:10px 20px;border-radius:10px;font-weight:700;font-size:13px;margin-top:8px;width:100%;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;';
+    banner.innerHTML = '<span>🎭 Демо-режим: до ' + DEMO_LIMIT + ' карточек</span><a href="' + BUY_URL + '" target="_blank" rel="noopener" style="background:#7c3aed;color:#fff;padding:6px 14px;border-radius:8px;text-decoration:none;font-size:12px;white-space:nowrap;">Купить →</a>';
+    headerEl.appendChild(banner);
+  }
 });
 </script>
+
 </body>
 </html>
